@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 import sys
 import json
 import os
@@ -20,10 +21,6 @@ info = {
         "ci_left": 39,
         "ci_right": 59
 }
-
-
-print('Number of arguments:', len(sys.argv), 'arguments.')
-print('Argument List:', str(sys.argv))
 
 def GetMarker(planner_name):
   return "x"
@@ -106,9 +103,6 @@ def PrintInfo(filepath, data):
       cur.execute("SELECT * FROM {}".format(table[0])).fetchall()
       names = list(map(lambda x: x[0], cur.description))
       print("\nTable \'{}\': {}".format(table[0], names))
-      # for name in names: 
-      #   outputs = cur.execute("SELECT {} FROM {}".format(name, table[0])).fetchall()
-      #   print(outputs)
   
   ############################################################
   ### Print All Planner
@@ -140,18 +134,6 @@ def PrintInfo(filepath, data):
   runs = cur.execute("SELECT id, experimentid, plannerid, correct_solution, time, best_cost FROM {}".format('runs')).fetchall()
   for run in runs:
     print("Run {} on environment {} with planner {}. Correct solution:{}. Time {}".format(run[0], run[1], run[2], run[3], run[4]))
-
-  ############################################################
-  ### Print All Best Cost per Run
-  ############################################################
-  # print(80*"-")
-  # print("-- Best cost in database")
-  # print(80*"-")
-  # # Table 'progress': ['runid', 'time', 'best_cost', 'iterations', 'current_free_states', 'current_graph_vertices', 'edge_collision_checks', 'nearest_neighbour_calls', 'number_of_segments_in_solution_path', 'state_collision_checks']
-
-  # runs = cur.execute("SELECT runid, best_cost FROM {}".format('progress')).fetchall()
-  # for run in runs:
-  #   print("Run {} with best cost {}".format(run[0], run[1]))
 
   ############################################################
   ### Print Average Success per Planner over Time
@@ -326,7 +308,6 @@ def plot(json_filepath):
     with open(json_filepath, 'r') as jsonfile:
         data = json.load(jsonfile)
 
-    # plt.style.use('../../test.mplstyle')
     fig, axs = plt.subplots(2, 1, sharex='col')
     plot_success(axs[0], data)
     plot_optimization(axs[1], data)
@@ -349,6 +330,13 @@ def plot_database(database_filepath, info):
     plot(json_filepath)
 
 if __name__ == '__main__':
-    database_filepath = 'data/example.db'
-    plot_database(database_filepath, info)
+    if len(sys.argv) <= 1:
+      print("Usage: test.py <inputfile>")
+    else:
+      fname=sys.argv[1]
+      if os.path.isfile(fname):
+        plot_database(fname, info)
+      else:
+        print("Error: {} is not a file.".format(fname))
+
 
