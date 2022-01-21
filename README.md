@@ -2,15 +2,15 @@
 
 Take a database file from an OMPL benchmark and generate graphs and tables.
 
-Input: benchmark.db
-
 ## Functionality 1 -- Optimality Graphs
 
 ```
   ./database_to_graph.py benchmark.db
 ```
 
-Output:
+Output: 
+![Optimality Graph](data/example.png)
+
 
 
 # TODO
