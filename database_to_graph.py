@@ -5,52 +5,10 @@ import os
 import sqlite3
 import numpy as np
 import matplotlib.pyplot as plt
+import argparse
 
-info = {
-        "alpha_percentile": 0.4,
-        "resolution": 200,
-        "min_time": {
-            "success": 0.001,
-            "optimization": 0.001
-        },
-        "max_time": {
-            "success": 30,
-            "optimization": 30
-        },
-        "max_cost": 100,
-        "ci_left": 39,
-        "ci_right": 59
-}
-
-def GetMarker(planner_name):
-  return "x"
-
-def GetLineStyle(planner_name):
-  return "-"
-
-def GetLabel(planner_name):
-  name = planner_name.lstrip("geometric_")
-  return name
-
-def GetColor(planner_name):
-  name = GetLabel(planner_name)
-  if name == "FMT":
-    return "gray"
-  if name == "BFMT":
-    return "black"
-  if name == "RRTConnect":
-    return "red"
-  if name == "RRT":
-    return "cyan"
-  if name == "LBTRRT":
-    return "orange"
-  if name == "kBITstar":
-    return "blue"
-  if name == "RRTstar":
-    return "purple"
-  if name == "KPIECE1":
-    return "green"
-  return "red"
+from src.database_info import *
+from src.plot_style import *
 
 def get_cost_results(cur, runids, times, max_cost, ci_left, ci_right):
     medians = np.zeros(len(times))
@@ -87,59 +45,25 @@ def get_count_success(cur, runids, times, max_cost, ci_left, ci_right):
 
     return success
 
-def PrintInfo(filepath, data):
-
-  con = sqlite3.connect(filepath)
-  cur = con.cursor()
-
-  ############################################################
-  ### Print All Tables
-  ############################################################
-  tables = cur.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").fetchall()
+def get_json_from_database(cur, data):
   print(80*"-")
-  print("-- Tables in database file {}".format(filepath))
+  print("-- Tables in database file")
   print(80*"-")
-  for table in tables:
-      cur.execute("SELECT * FROM {}".format(table[0])).fetchall()
-      names = list(map(lambda x: x[0], cur.description))
-      print("\nTable \'{}\': {}".format(table[0], names))
-  
-  ############################################################
-  ### Print All Planner
-  ############################################################
+  print(get_tables_from_database(cur))
   print(80*"-")
   print("-- Planner in database")
   print(80*"-")
-  planners = cur.execute("SELECT id, name FROM {}".format('plannerConfigs')).fetchall()
-  for planner in planners:
-      print("Planner {} has ID {}".format(planner[1], planner[0]))
-
-  ############################################################
-  ### Print All Experiments
-  ############################################################
+  print(get_planner_names_from_database(cur))
   print(80*"-")
   print("-- Experiments in database")
   print(80*"-")
-  experiments = cur.execute("SELECT id, name FROM {}".format('experiments')).fetchall()
-  for experiment in  experiments:
-      print("Experiment {} has ID {}".format(experiment[1], experiment[0]))
-
-  ############################################################
-  ### Print All Runs
-  ############################################################
-  print(80*"-")
-  print("-- Runs in database")
-  print(80*"-")
-
-  runs = cur.execute("SELECT id, experimentid, plannerid, correct_solution, time, best_cost FROM {}".format('runs')).fetchall()
-  for run in runs:
-    print("Run {} on environment {} with planner {}. Correct solution:{}. Time {}".format(run[0], run[1], run[2], run[3], run[4]))
+  print(get_experiment_names_from_database(cur))
 
   ############################################################
   ### Print Average Success per Planner over Time
   ############################################################
   print(80*"-")
-  print("-- Times for planners ")
+  print("-- Runs per planner ")
   print(80*"-")
 
   times = np.logspace(np.log10(data["info"]["min_time"]["success"]), np.log10(data["info"]["max_time"]["success"]),
@@ -150,25 +74,16 @@ def PrintInfo(filepath, data):
     planner_id = planner[0]
     planner_name = planner[1]
     number_runs = cur.execute("SELECT COUNT(*) FROM {} WHERE plannerid={}".format('runs', planner_id)).fetchall()[0][0]
+
+    percentages = np.empty(len(times))
+    for i in range(len(times)):
+        percentage = cur.execute(
+            "SELECT COUNT(*) FROM {0} WHERE plannerid={2} AND time < {1}".format('runs', times[i], planner_id)).fetchall()
+        percentages[i] = (percentage[0][0] / number_runs) * 100
+    data[planner_name] = {
+        "success": percentages.tolist()
+        }
     print("Planner {} (id {}) has {} runs.".format(planner_name, planner_id, number_runs))
-
-    percentages = np.empty(len(times))
-    for i in range(len(times)):
-        percentage = cur.execute(
-            "SELECT COUNT(*) FROM {0} WHERE plannerid={2} AND time < {1}".format('runs', times[i], planner_id)).fetchall()
-        percentages[i] = (percentage[0][0] / number_runs) * 100
-    data[planner_name] = {
-        "success": percentages.tolist()
-        }
-
-    percentages = np.empty(len(times))
-    for i in range(len(times)):
-        percentage = cur.execute(
-            "SELECT COUNT(*) FROM {0} WHERE plannerid={2} AND time < {1}".format('runs', times[i], planner_id)).fetchall()
-        percentages[i] = (percentage[0][0] / number_runs) * 100
-    data[planner_name] = {
-        "success": percentages.tolist()
-        }
 
   ############################################################
   ### Print Cost per Planner over Time
@@ -189,7 +104,6 @@ def PrintInfo(filepath, data):
     planner_name = planner[1]
     getids = cur.execute("SELECT id FROM {} WHERE plannerid={}".format('runs',planner_id)).fetchall()
     runs = np.array(getids).flatten()
-    print("Planner Id {} has runs {}".format(planner_id, runs))
     runids = ','.join(str(run) for run in runs)
 
     results = get_cost_results(cur, runids, times, max_cost, ci_left, ci_right)
@@ -264,7 +178,8 @@ def plot_success(ax, data):
       print(planner, data[planner])
 
       success_over_time = data[planner]["success"]
-      ax.plot(times, success_over_time, color=GetColor(planner), linestyle=GetLineStyle(planner), label=GetLabel(planner))
+      ax.plot(times, success_over_time, color=get_color(data, planner),
+          linestyle=get_line_style(data, planner), label=get_label(planner))
 
     ax.grid(True, which="both", ls='--')
     ax.set_ylabel("success [\%]")
@@ -293,12 +208,16 @@ def plot_optimization(ax, data):
         planner_q95 = data[planner]["quantile95"]
 
         start = get_start_index(planner_median, times, max_cost)
-        ax.plot(times[start:], planner_median[start:], color=GetColor(planner), label=GetLabel(planner))
-        ax.fill_between(times[start:], planner_q5[start:], planner_q95[start:], color=GetColor(planner), alpha=data["info"]["alpha_percentile"])
+        ax.plot(times[start:], planner_median[start:], color=get_color(data,
+          planner), label=get_label(planner))
+        ax.fill_between(times[start:], planner_q5[start:], planner_q95[start:],
+            color=get_color(data, planner), alpha=data["info"]["alpha_percentile"])
       else:
         planner_point = data[planner]["point"]
         time_errors, cost_errors = get_errors(planner_point)
-        plt.errorbar(planner_point["time"][0], planner_point["cost"][0], cost_errors, time_errors, c=GetColor(planner), marker=GetMarker(planner), ms=10, lw=0.5)
+        plt.errorbar(planner_point["time"][0], planner_point["cost"][0],
+            cost_errors, time_errors, c=get_color(data, planner),
+            marker=get_marker_style(data, planner), ms=10, lw=0.5)
 
     ax.grid(True, which="both", ls='--')
     ax.set_xlabel("run time [s]")
@@ -312,31 +231,52 @@ def plot(json_filepath):
     plot_success(axs[0], data)
     plot_optimization(axs[1], data)
 
+    axs[0].title.set_text(data["info"]["experiment"])
     axs[0].legend(loc='upper left', title='Planner')
     plt.show()
     plt.savefig(json_filepath+'.pdf', format='pdf', dpi=300, bbox_inches='tight')
 
-def plot_database(database_filepath, info):
-    json_filepath = os.path.splitext(database_filepath)[0]+'.json'
+def load_config():
+    json_config = "config/default.json"
+    with open(json_config, 'r') as jsonfile:
+        info = json.load(jsonfile)
+    return info
 
+def plot_graph_from_database(database_filepath):
+    ############################################################
+    ### Create data structure from database file
+    ############################################################
+    con = sqlite3.connect(database_filepath)
+    cursor = con.cursor()
     data = {}
-    data["info"] = info
+    data["info"] = load_config()
+    get_json_from_database(cursor, data)
+    experiment_names = get_experiment_names_from_database(cursor)
+    if len(experiment_names) > 0 :
+      data["info"]["experiment"] = experiment_names[0]
 
-    PrintInfo(database_filepath, data)
-
+    ############################################################
+    ### Create json file from data structure
+    ############################################################
+    json_filepath = os.path.splitext(database_filepath)[0]+'.json'
     with open(json_filepath, 'w') as jsonfile:
         json.dump(data, jsonfile, indent=4)
 
+    ############################################################
+    ### Plot json file
+    ############################################################
     plot(json_filepath)
 
 if __name__ == '__main__':
-    if len(sys.argv) <= 1:
-      print("Usage: test.py <inputfile>")
+    parser = argparse.ArgumentParser(description='Plotting of Benchmark Files (especially for asymptotically-optimal planner).')
+    parser.add_argument('database_file', type=str, nargs='?', help='Database (.db) file')
+    args = parser.parse_args()
+
+    fname = args.database_file
+    if fname is None:
+      fname="data/example.db"
+
+    if os.path.isfile(fname):
+      plot_graph_from_database(fname)
     else:
-      fname=sys.argv[1]
-      if os.path.isfile(fname):
-        plot_database(fname, info)
-      else:
-        print("Error: {} is not a file.".format(fname))
-
-
+      print("Error: {} is not a file.".format(fname))
