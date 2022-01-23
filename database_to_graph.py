@@ -191,11 +191,12 @@ def plot_optimization(ax, data):
     resolution = data["info"]["resolution"]
     times = np.logspace(np.log10(min_time), np.log10(max_time), resolution)
     max_cost = data["info"]["max_cost"]
+    min_cost = data["info"]["min_cost"]
 
     ax.set_xscale('log')
     ax.set_yscale('linear')
     ax.set_xlim(min_time, max_time)
-    ax.set_ylim(0.0, max_cost)
+    ax.set_ylim(min_cost, max_cost)
 
     for planner in data:
       if planner == "info":
@@ -231,16 +232,11 @@ def plot(json_filepath):
     plot_success(axs[0], data)
     plot_optimization(axs[1], data)
 
-    axs[0].title.set_text(data["info"]["experiment"])
+    experiment_name = get_experiment_label(data["info"]["experiment"])
+    axs[0].title.set_text(experiment_name)
     axs[0].legend(loc='upper left', title='Planner')
     plt.show()
     plt.savefig(json_filepath+'.pdf', format='pdf', dpi=300, bbox_inches='tight')
-
-def load_config():
-    json_config = "config/default.json"
-    with open(json_config, 'r') as jsonfile:
-        info = json.load(jsonfile)
-    return info
 
 def plot_graph_from_database(database_filepath):
     ############################################################

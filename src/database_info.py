@@ -1,3 +1,4 @@
+import json
 import sqlite3
 
 def get_tables_from_database(cursor):
@@ -21,9 +22,31 @@ def get_planner_names_from_database(cursor):
   planners = cursor.execute("SELECT id, name FROM {}".format('plannerConfigs')).fetchall()
   planner_names = []
   for planner in planners:
-      # print("Planner {} has ID {}".format(planner[1], planner[0]))
       planner_names.append(planner[1])
   return planner_names
+
+def print_metadata_from_database(cur):
+  print(80*"-")
+  print("-- Tables in database file")
+  print(80*"-")
+  print(get_tables_from_database(cur))
+  print(80*"-")
+  print("-- Planner in database")
+  print(80*"-")
+  print(get_planner_names_from_database(cur))
+  print(80*"-")
+  print("-- Experiments in database")
+  print(80*"-")
+  print(get_experiment_names_from_database(cur))
+
+def load_config():
+    json_config = "config/default.json"
+    with open(json_config, 'r') as jsonfile:
+        info = json.load(jsonfile)
+    return info
+
+def get_average_runtime_from_database(cur, data):
+  print("NYI")
 
 ############################################################
 ### Print All Runs
