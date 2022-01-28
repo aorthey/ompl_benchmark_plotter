@@ -20,8 +20,9 @@
     "RRTConnect": "red",
     "RRT": "cyan",
     "LBTRRT": "orange",
-    "kBITstar": "blue",
-    "RRTstar": "purple",
+    "kBIT*": "blue",
+    "AIT*": "yellow",
+    "RRT*": "purple",
     "KPIECE1": "green"
   },
   "linestyle": "-",

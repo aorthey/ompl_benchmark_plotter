@@ -1,4 +1,8 @@
 *.json
 *.pyc
 *.pdf
+*.png
+*.aux
+*.log
+*.tex
 

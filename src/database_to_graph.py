@@ -45,26 +45,31 @@ def get_count_success(cur, runids, times, max_cost, ci_left, ci_right):
 
     return success
 
-def get_json_from_database(cur, data):
-  print(80*"-")
-  print("-- Tables in database file")
-  print(80*"-")
-  print(get_tables_from_database(cur))
-  print(80*"-")
-  print("-- Planner in database")
-  print(80*"-")
-  print(get_planner_names_from_database(cur))
-  print(80*"-")
-  print("-- Experiments in database")
-  print(80*"-")
-  print(get_experiment_names_from_database(cur))
+def get_json_from_database(cur, data, verbosity):
+  if verbosity > 1:
+    print(80*"-")
+    print("-- Tables in database file")
+    print(80*"-")
+    print(get_tables_from_database(cur))
+    print(80*"-")
+    print("-- Planner in database")
+    print(80*"-")
+    print(get_planner_names_from_database(cur))
+    print(80*"-")
+    print("-- Experiments in database")
+    print(80*"-")
+    print(get_experiment_names_from_database(cur))
+
+  if verbosity > 2:
+    get_run_results_from_database(cur)
 
   ############################################################
   ### Print Average Success per Planner over Time
   ############################################################
-  print(80*"-")
-  print("-- Runs per planner ")
-  print(80*"-")
+  if verbosity > 1:
+    print(80*"-")
+    print("-- Runs per planner ")
+    print(80*"-")
 
   times = np.logspace(np.log10(data["info"]["min_time"]["success"]), np.log10(data["info"]["max_time"]["success"]),
                       data["info"]["resolution"])
@@ -83,15 +88,12 @@ def get_json_from_database(cur, data):
     data[planner_name] = {
         "success": percentages.tolist()
         }
-    print("Planner {} (id {}) has {} runs.".format(planner_name, planner_id, number_runs))
+    if verbosity > 1:
+      print("Planner {} (id {}) has {} runs.".format(planner_name, planner_id, number_runs))
 
   ############################################################
-  ### Print Cost per Planner over Time
+  ### Get Cost per Planner over Time
   ############################################################
-  print(80*"-")
-  print("-- Cost for planners ")
-  print(80*"-")
-
   max_time = data["info"]["max_time"]["optimization"]
   min_time = data["info"]["min_time"]["optimization"]
   times = np.logspace(np.log10(min_time), np.log10(max_time), data["info"]["resolution"])
@@ -115,7 +117,7 @@ def get_json_from_database(cur, data):
       success = get_count_success(cur, runids, times, max_cost, ci_left, ci_right)
       data[planner_name]["success"] = success.tolist()
     else:
-      point_data = get_from_runs(cur, planner_id, ci_left, ci_right)
+      point_data = get_best_cost_from_runs(cur, planner_id, ci_left, ci_right)
       if point_data is None:
           point_data = max_point(max_time, max_cost)
       data[planner_name]["point"] = point_data
@@ -127,8 +129,8 @@ def get_start_index(medians, times, max_cost):
             return i
     return len(times)
 
-def get_from_runs(cur, planner_id, ci_left, ci_right):
-    pair = np.array(cur.execute("SELECT time, best_cost FROM {0} WHERE plannerid={1} AND status=6".format('runs', planner_id)).fetchall())
+def get_best_cost_from_runs(cur, planner_id, ci_left, ci_right):
+    pair = np.array(cur.execute("SELECT time, solution_length FROM {0} WHERE plannerid={1} AND status=6".format('runs', planner_id)).fetchall())
     if pair.size == 0:
         return None
     split = np.split(pair, 2, axis=1)
@@ -175,14 +177,13 @@ def plot_success(ax, data):
     for planner in data:
       if planner == "info":
         continue
-      print(planner, data[planner])
 
       success_over_time = data[planner]["success"]
       ax.plot(times, success_over_time, color=get_color(data, planner),
           linestyle=get_line_style(data, planner), label=get_label(planner))
 
     ax.grid(True, which="both", ls='--')
-    ax.set_ylabel("success [\%]")
+    ax.set_ylabel("success [%]")
 
 def plot_optimization(ax, data):
 
@@ -224,21 +225,28 @@ def plot_optimization(ax, data):
     ax.set_xlabel("run time [s]")
     ax.set_ylabel("solution cost")
 
-def plot(json_filepath):
+def json_to_graph(json_filepath, verbosity, show):
     with open(json_filepath, 'r') as jsonfile:
         data = json.load(jsonfile)
 
-    fig, axs = plt.subplots(2, 1, sharex='col')
+    fig, axs = plt.subplots(2, 1, sharex='col', figsize=(16,10))
     plot_success(axs[0], data)
     plot_optimization(axs[1], data)
 
     experiment_name = get_experiment_label(data["info"]["experiment"])
     axs[0].title.set_text(experiment_name)
     axs[0].legend(loc='upper left', title='Planner')
-    plt.show()
-    plt.savefig(json_filepath+'.pdf', format='pdf', dpi=300, bbox_inches='tight')
+    pdf_filepath = json_filepath+'.pdf'
+    # plt.savefig(pdf_filepath, format='pdf', dpi=300, bbox_inches='tight')
+    fig = plt.gcf()
+    plt.savefig(pdf_filepath, format='pdf', dpi=300, bbox_inches='tight')
+    if verbosity > 0:
+      print("Wrote pdf with dpi %d to file %s" %(fig.dpi,pdf_filepath))
+    if show:
+      plt.show()
 
-def plot_graph_from_database(database_filepath):
+
+def plot_graph_from_database(database_filepath, verbosity=0, show=False, max_cost=-1, max_time=-1, min_time=-1):
     ############################################################
     ### Create data structure from database file
     ############################################################
@@ -246,7 +254,16 @@ def plot_graph_from_database(database_filepath):
     cursor = con.cursor()
     data = {}
     data["info"] = load_config()
-    get_json_from_database(cursor, data)
+    if max_cost > 0:
+      data["info"]['max_cost'] = max_cost
+    if max_time > 0:
+      data["info"]['max_time']['success'] = max_time
+      data["info"]['max_time']['optimization'] = max_time
+    if min_time > 0:
+      data["info"]['min_time']['success'] = min_time
+      data["info"]['min_time']['optimization'] = min_time
+
+    get_json_from_database(cursor, data, verbosity)
     experiment_names = get_experiment_names_from_database(cursor)
     if len(experiment_names) > 0 :
       data["info"]["experiment"] = experiment_names[0]
@@ -254,14 +271,15 @@ def plot_graph_from_database(database_filepath):
     ############################################################
     ### Create json file from data structure
     ############################################################
-    json_filepath = os.path.splitext(database_filepath)[0]+'.json'
+    # json_filepath = os.path.splitext(database_filepath)[0]+'.json'
+    json_filepath = get_json_filepath_from_database(database_filepath)
     with open(json_filepath, 'w') as jsonfile:
         json.dump(data, jsonfile, indent=4)
 
     ############################################################
     ### Plot json file
     ############################################################
-    plot(json_filepath)
+    json_to_graph(json_filepath, verbosity, show)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Plotting of Benchmark Files (especially for asymptotically-optimal planner).')
