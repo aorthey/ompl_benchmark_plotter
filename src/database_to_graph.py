@@ -24,11 +24,6 @@ fe = font_manager.FontEntry(
 font_manager.fontManager.ttflist.insert(0, fe)
 plt.rcParams['font.family'] = fe.name
 plt.rcParams['mathtext.fontset']='cm'
-# plt.rcParams['axes.unicode_minus']=False
-
-#plt.rcParams["font.serif"] = fe.name
-
-
 
 def get_cost_results(cur, runids, times, max_cost, ci_left, ci_right):
     medians = np.zeros(len(times))
@@ -128,30 +123,37 @@ def get_json_from_database(cur, data, verbosity, ignore_non_optimal_planner=Fals
   ############################################################
   max_time = data["info"]["max_time"]["optimization"]
   min_time = data["info"]["min_time"]["optimization"]
-  times = np.logspace(np.log10(min_time), np.log10(max_time), data["info"]["resolution"])
   max_cost = data["info"]["max_cost"]
   ci_left = data["info"]["ci_left"]
   ci_right = data["info"]["ci_right"]
+  if has_best_cost(cur):
+    times = np.logspace(np.log10(min_time), np.log10(max_time), data["info"]["resolution"])
 
-  for planner in planners:
-    planner_id = planner[0]
-    planner_name = planner[1]
-    getids = cur.execute("SELECT id FROM {} WHERE plannerid={}".format('runs',planner_id)).fetchall()
-    runs = np.array(getids).flatten()
-    runids = ','.join(str(run) for run in runs)
+    for planner in planners:
+      planner_id = planner[0]
+      planner_name = planner[1]
+      getids = cur.execute("SELECT id FROM {} WHERE plannerid={}".format('runs',planner_id)).fetchall()
+      runs = np.array(getids).flatten()
+      runids = ','.join(str(run) for run in runs)
 
-    results = get_cost_results(cur, runids, times, max_cost, ci_left, ci_right)
-    data[planner_name]["optimization_success"] = results[0]
-    if results[0]:
-      data[planner_name]["median"] = results[1].tolist()
-      data[planner_name]["quantile5"] = results[2].tolist()
-      data[planner_name]["quantile95"] = results[3].tolist()
-      success = get_count_success(cur, runids, times, max_cost, ci_left, ci_right)
-      data[planner_name]["success"] = success.tolist()
-    else:
-      point_data = get_best_cost_from_runs(cur, planner_id, ci_left, ci_right)
-      if point_data is None:
-          point_data = max_point(max_time, max_cost)
+      results = get_cost_results(cur, runids, times, max_cost, ci_left, ci_right)
+      data[planner_name]["optimization_success"] = results[0]
+      if results[0]:
+        data[planner_name]["median"] = results[1].tolist()
+        data[planner_name]["quantile5"] = results[2].tolist()
+        data[planner_name]["quantile95"] = results[3].tolist()
+        success = get_count_success(cur, runids, times, max_cost, ci_left, ci_right)
+        data[planner_name]["success"] = success.tolist()
+      else:
+        point_data = get_best_cost_from_runs(cur, planner_id, ci_left, ci_right)
+        if point_data is None:
+            point_data = max_point(max_time, max_cost)
+        data[planner_name]["point"] = point_data
+  else:
+    for planner in planners:
+      planner_name = planner[1]
+      data[planner_name]["optimization_success"] = False
+      point_data = max_point(max_time, max_cost)
       data[planner_name]["point"] = point_data
 
 
@@ -275,13 +277,7 @@ def json_to_graph(json_filepath, verbosity, show):
     axs[0].tick_params(labelsize=label_fontsize)
     axs[1].tick_params(labelsize=label_fontsize)
 
-    # for i in axs.get_xticklabels():
-    #   print(i)
-    # axs[1].set_xticklabels([i.get_text().replace('$-$','-') for i in axs[1].get_xticklabels()])
-    # plt.gca().set_yticklabels([i.get_text().replace('-', '$-$') for i in axs[1].get_yticklabels()])
-
     pdf_filepath = json_filepath+'.pdf'
-    # plt.savefig(pdf_filepath, format='pdf', dpi=300, bbox_inches='tight')
     fig = plt.gcf()
     plt.savefig(pdf_filepath, format='pdf', dpi=300, bbox_inches='tight')
     if verbosity > 0:
@@ -289,12 +285,10 @@ def json_to_graph(json_filepath, verbosity, show):
     if show:
         plt.show()
 
-def plot_graph_from_database(database_filepath, config):#verbosity=0, show=False, max_cost=-1, max_time=-1, min_time=-1):
+def plot_graph_from_databases(database_filepaths, config):
     ############################################################
     ### Create data structure from database file
     ############################################################
-    con = sqlite3.connect(database_filepath)
-    cursor = con.cursor()
     data = {}
     data["info"] = load_config()
     if config['max_cost'] > 0:
@@ -310,15 +304,19 @@ def plot_graph_from_database(database_filepath, config):#verbosity=0, show=False
     if config['label_fontsize'] > 0:
       data["info"]['label_fontsize'] = config['label_fontsize']
 
-    get_json_from_database(cursor, data, config['verbosity'], config['ignore_non_optimal_planner'])
-    experiment_names = get_experiment_names_from_database(cursor)
-    if len(experiment_names) > 0 :
-      data["info"]["experiment"] = experiment_names[0]
+    for database_filepath in database_filepaths:
+      con = sqlite3.connect(database_filepath)
+      cursor = con.cursor()
+      get_json_from_database(cursor, data, config['verbosity'], config['ignore_non_optimal_planner'])
+      experiment_names = get_experiment_names_from_database(cursor)
+      if len(experiment_names) > 0 :
+        data["info"]["experiment"] = experiment_names[0]
 
     ############################################################
     ### Create json file from data structure
     ############################################################
-    json_filepath = get_json_filepath_from_database(database_filepath)
+    json_filepath = get_json_filepath_from_databases(database_filepaths)
+    pdf_filepath = get_pdf_from_database_filepaths(database_filepaths)
     with open(json_filepath, 'w') as jsonfile:
         json.dump(data, jsonfile, indent=4)
 

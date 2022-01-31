@@ -52,10 +52,6 @@ def combine_planner_data(planner_data1, planner_data2):
     planner_data[best_planner]['best_planner'] = True
   return planner_data
 
-    # planner_data[planner_name] = { 'time_mean' : time_mean,
-    #     'time_variance' : np.std(times), 'success' : success_percentage,
-    #     'time_limit' : timelimit,  'best_planner' : False, 'number_runs' : run_count}
-
 def get_experiment_names_from_database(cursor):
   experiments = cursor.execute("SELECT id, name FROM {}".format('experiments')).fetchall()
   experiment_names = []
@@ -111,6 +107,11 @@ def get_planner_names_from_database(cursor):
       planner_names.append(planner[1])
   return planner_names
 
+def has_best_cost(cursor):
+  cursor.execute("SELECT * FROM {}".format('progress')).fetchall()
+  names = list(map(lambda x: x[0], cursor.description))
+  return True if 'best_cost' in names else False
+
 def get_run_results_from_database(cursor):
   planners = cursor.execute("SELECT id, name FROM {}".format('plannerConfigs')).fetchall()
   for planner in planners:
@@ -118,16 +119,18 @@ def get_run_results_from_database(cursor):
     getids = cursor.execute("SELECT id FROM {} WHERE plannerid={}".format('runs',planner_id)).fetchall()
     runs = np.array(getids).flatten()
     runids = ','.join(str(run) for run in runs)
-    data = np.array(cursor.execute("SELECT time, best_cost FROM {} WHERE runid in ({})".format('progress', runids)).fetchall()).flatten()
-    print(planner[1],data)
+    if has_best_cost(cursor):
+      data = np.array(cursor.execute("SELECT time, best_cost FROM {} WHERE runid in ({})".format('progress', runids)).fetchall()).flatten()
 
   for planner in planners:
     planner_id = planner[0]
     getids = cursor.execute("SELECT id FROM {} WHERE plannerid={}".format('runs',planner_id)).fetchall()
     runs = np.array(getids).flatten()
     runids = ','.join(str(run) for run in runs)
-    data = np.array(cursor.execute("SELECT time, best_cost, solution_length FROM {} WHERE plannerid={}".format('runs', planner_id)).fetchall())
-    print("Planner {} with time {} and cost {}".format(planner[1],data[0], data[1]))
+    if has_best_cost(cursor):
+      data = np.array(cursor.execute("SELECT time, best_cost FROM {} WHERE runid in ({})".format('progress', runids)).fetchall()).flatten()
+      if len(data) > 0:
+        print("Planner {} with time {} and cost {}".format(planner[1], data[0], data[1]))
 
 
 def get_filename_from_database_filepaths(filepaths):
@@ -175,15 +178,19 @@ def get_cell_entry(data, experiment, planner, hide_variance=False):
   cell_entry += "$"
   return cell_entry
 
-def get_json_filepath_from_database(filepath): 
-  directory = os.path.dirname(filepath)
-  filename_without_extension = os.path.basename(filepath)
-  filename_without_extension = os.path.splitext(filename_without_extension)[0]
-  directory = directory + "/" + filename_without_extension + "/"
-  if not os.path.exists(directory):
-    os.makedirs(directory)
-  json_filepath = directory + filename_without_extension + '.json'
-  return json_filepath
+def get_json_filepath_from_databases(filepaths): 
+  filename_without_extension = get_filename_from_database_filepaths(filepaths)
+  return create_filename_with_extension(filename_without_extension, ".json")
+
+# def get_json_filepath_from_database(filepath): 
+#   directory = os.path.dirname(filepath)
+#   filename_without_extension = os.path.basename(filepath)
+#   filename_without_extension = os.path.splitext(filename_without_extension)[0]
+#   directory = directory + "/" + filename_without_extension + "/"
+#   if not os.path.exists(directory):
+#     os.makedirs(directory)
+#   json_filepath = directory + filename_without_extension + '.json'
+#   return json_filepath
 
 def print_metadata_from_database(cur):
   print(80*"-")

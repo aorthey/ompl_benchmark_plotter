@@ -74,8 +74,9 @@ if args.type == 0:
       'label_fontsize': label_fontsize,
       'ignore_non_optimal_planner': args.ignore_non_optimal_planner
   }
-  for fname in args.database_files:
-    plot_graph_from_database(fname, plot_config)
+  plot_graph_from_databases(args.database_files, plot_config)
+  # for fname in args.database_files:
+  #   plot_graph_from_database(fname, plot_config)
 
 elif args.type == 1:
   if args.verbose > 0:
