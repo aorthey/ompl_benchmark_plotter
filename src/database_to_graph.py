@@ -5,10 +5,30 @@ import os
 import sqlite3
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import font_manager, rcParams
 import argparse
 
 from src.database_info import *
 from src.plot_style import *
+
+font_path = "config/cmr10.ttf"
+
+# font_manager.fontManager.addfont(font_path)
+# fprop = font_manager.FontProperties(fname=font_path)
+# plt.rcParams['font.family'] = 'sans-serif'
+# plt.rcParams['font.sans-serif'] = fprop.get_name()
+
+fe = font_manager.FontEntry(
+    fname=font_path,
+    name='cmr10')
+font_manager.fontManager.ttflist.insert(0, fe)
+plt.rcParams['font.family'] = fe.name
+plt.rcParams['mathtext.fontset']='cm'
+# plt.rcParams['axes.unicode_minus']=False
+
+#plt.rcParams["font.serif"] = fe.name
+
+
 
 def get_cost_results(cur, runids, times, max_cost, ci_left, ci_right):
     medians = np.zeros(len(times))
@@ -45,7 +65,7 @@ def get_count_success(cur, runids, times, max_cost, ci_left, ci_right):
 
     return success
 
-def get_json_from_database(cur, data, verbosity):
+def get_json_from_database(cur, data, verbosity, ignore_non_optimal_planner=False):
   if verbosity > 1:
     print(80*"-")
     print("-- Tables in database file")
@@ -64,6 +84,14 @@ def get_json_from_database(cur, data, verbosity):
     get_run_results_from_database(cur)
 
   ############################################################
+  ### Verify that all experiment names match
+  ############################################################
+  if not assert_equivalent_experiment_names(cur):
+    print("Error: All experiment names in database have to match to plot \
+    optimality graph.")
+    sys.exit(0)
+
+  ############################################################
   ### Print Average Success per Planner over Time
   ############################################################
   if verbosity > 1:
@@ -75,6 +103,10 @@ def get_json_from_database(cur, data, verbosity):
                       data["info"]["resolution"])
 
   planners = cur.execute("SELECT id, name FROM {}".format('plannerConfigs')).fetchall()
+  if ignore_non_optimal_planner:
+    print("Removing non-optimal planner")
+    planners = remove_non_optimal_planner(planners)
+
   for planner in planners:
     planner_id = planner[0]
     planner_name = planner[1]
@@ -167,6 +199,7 @@ def plot_success(ax, data):
     min_time = data["info"]["min_time"]["success"]
     max_time = data["info"]["max_time"]["success"]
     resolution = data["info"]["resolution"]
+    fontsize = data["info"]["fontsize"]
 
     times = np.logspace(np.log10(min_time), np.log10(max_time), resolution)
     ax.set_xscale('log')
@@ -183,7 +216,7 @@ def plot_success(ax, data):
           linestyle=get_line_style(data, planner), label=get_label(planner))
 
     ax.grid(True, which="both", ls='--')
-    ax.set_ylabel("success [%]")
+    ax.set_ylabel("success [%]", fontsize=fontsize)
 
 def plot_optimization(ax, data):
 
@@ -193,6 +226,7 @@ def plot_optimization(ax, data):
     times = np.logspace(np.log10(min_time), np.log10(max_time), resolution)
     max_cost = data["info"]["max_cost"]
     min_cost = data["info"]["min_cost"]
+    fontsize = data["info"]["fontsize"]
 
     ax.set_xscale('log')
     ax.set_yscale('linear')
@@ -222,8 +256,8 @@ def plot_optimization(ax, data):
             marker=get_marker_style(data, planner), ms=10, lw=0.5)
 
     ax.grid(True, which="both", ls='--')
-    ax.set_xlabel("run time [s]")
-    ax.set_ylabel("solution cost")
+    ax.set_xlabel("run time [s]", fontsize=fontsize)
+    ax.set_ylabel("solution cost", fontsize=fontsize)
 
 def json_to_graph(json_filepath, verbosity, show):
     with open(json_filepath, 'r') as jsonfile:
@@ -233,20 +267,29 @@ def json_to_graph(json_filepath, verbosity, show):
     plot_success(axs[0], data)
     plot_optimization(axs[1], data)
 
+    fontsize = data['info']['fontsize']
+    label_fontsize = data['info']['label_fontsize']
     experiment_name = get_experiment_label(data["info"]["experiment"])
-    axs[0].title.set_text(experiment_name)
-    axs[0].legend(loc='upper left', title='Planner')
+    axs[0].set_title(experiment_name, fontsize=fontsize)
+    axs[0].legend(loc='upper left', title='Planner', title_fontsize=label_fontsize, fontsize=label_fontsize)
+    axs[0].tick_params(labelsize=label_fontsize)
+    axs[1].tick_params(labelsize=label_fontsize)
+
+    # for i in axs.get_xticklabels():
+    #   print(i)
+    # axs[1].set_xticklabels([i.get_text().replace('$-$','-') for i in axs[1].get_xticklabels()])
+    # plt.gca().set_yticklabels([i.get_text().replace('-', '$-$') for i in axs[1].get_yticklabels()])
+
     pdf_filepath = json_filepath+'.pdf'
     # plt.savefig(pdf_filepath, format='pdf', dpi=300, bbox_inches='tight')
     fig = plt.gcf()
     plt.savefig(pdf_filepath, format='pdf', dpi=300, bbox_inches='tight')
     if verbosity > 0:
-      print("Wrote pdf with dpi %d to file %s" %(fig.dpi,pdf_filepath))
+        print("Wrote pdf with dpi %d to file %s" %(fig.dpi,pdf_filepath))
     if show:
-      plt.show()
+        plt.show()
 
-
-def plot_graph_from_database(database_filepath, verbosity=0, show=False, max_cost=-1, max_time=-1, min_time=-1):
+def plot_graph_from_database(database_filepath, config):#verbosity=0, show=False, max_cost=-1, max_time=-1, min_time=-1):
     ############################################################
     ### Create data structure from database file
     ############################################################
@@ -254,16 +297,20 @@ def plot_graph_from_database(database_filepath, verbosity=0, show=False, max_cos
     cursor = con.cursor()
     data = {}
     data["info"] = load_config()
-    if max_cost > 0:
-      data["info"]['max_cost'] = max_cost
-    if max_time > 0:
-      data["info"]['max_time']['success'] = max_time
-      data["info"]['max_time']['optimization'] = max_time
-    if min_time > 0:
-      data["info"]['min_time']['success'] = min_time
-      data["info"]['min_time']['optimization'] = min_time
+    if config['max_cost'] > 0:
+      data["info"]['max_cost'] = config['max_cost']
+    if config['max_time'] > 0:
+      data["info"]['max_time']['success'] = config['max_time']
+      data["info"]['max_time']['optimization'] = config['max_time']
+    if config['min_time'] > 0:
+      data["info"]['min_time']['success'] = config['min_time']
+      data["info"]['min_time']['optimization'] = config['min_time']
+    if config['fontsize'] > 0:
+      data["info"]['fontsize'] = config['fontsize']
+    if config['label_fontsize'] > 0:
+      data["info"]['label_fontsize'] = config['label_fontsize']
 
-    get_json_from_database(cursor, data, verbosity)
+    get_json_from_database(cursor, data, config['verbosity'], config['ignore_non_optimal_planner'])
     experiment_names = get_experiment_names_from_database(cursor)
     if len(experiment_names) > 0 :
       data["info"]["experiment"] = experiment_names[0]
@@ -271,7 +318,6 @@ def plot_graph_from_database(database_filepath, verbosity=0, show=False, max_cos
     ############################################################
     ### Create json file from data structure
     ############################################################
-    # json_filepath = os.path.splitext(database_filepath)[0]+'.json'
     json_filepath = get_json_filepath_from_database(database_filepath)
     with open(json_filepath, 'w') as jsonfile:
         json.dump(data, jsonfile, indent=4)
@@ -279,7 +325,7 @@ def plot_graph_from_database(database_filepath, verbosity=0, show=False, max_cos
     ############################################################
     ### Plot json file
     ############################################################
-    json_to_graph(json_filepath, verbosity, show)
+    json_to_graph(json_filepath, config['verbosity'], config['show'])
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Plotting of Benchmark Files (especially for asymptotically-optimal planner).')

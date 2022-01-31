@@ -13,6 +13,8 @@
   "max_cost": 100,
   "ci_left": 39,
   "ci_right": 59,
+  "fontsize": 30,
+  "label_fontsize": 20,
   "colors":  {
     "default": "red",
     "FMT": "gray",
@@ -23,7 +25,8 @@
     "kBIT*": "blue",
     "AIT*": "yellow",
     "RRT*": "purple",
-    "KPIECE1": "green"
+    "KPIECE1": "green",
+    "RRTXstatic": "green"
   },
   "linestyle": "-",
   "markerstyle": "x"

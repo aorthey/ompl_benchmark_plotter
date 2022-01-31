@@ -22,6 +22,9 @@ graph_group = parser.add_argument_group("optimality graph options")
 graph_group.add_argument('--max-cost', type=float, help='Specify upper bound on cost display.')
 graph_group.add_argument('--max-time', type=float, help='Specify upper bound on time display.')
 graph_group.add_argument('--min-time', type=float, help='Specify lower bound on time display.')
+graph_group.add_argument('--fontsize', type=float, help='Fontsize of title and descriptions.')
+graph_group.add_argument('--label-fontsize', type=float, help='Fontsize of tick labels.')
+graph_group.add_argument('--ignore-non-optimal-planner', action='store_const', const=True, help='Do not plot non-optimal planner.')
 
 #### Options for runtime table
 table_group = parser.add_argument_group("table options")
@@ -59,8 +62,20 @@ if args.type == 0:
   max_cost = args.max_cost if args.max_cost else -1
   max_time = args.max_time if args.max_time else -1
   min_time = args.min_time if args.min_time else -1
+  fontsize = args.fontsize if args.fontsize else -1
+  label_fontsize = args.label_fontsize if args.label_fontsize else -1
+  plot_config = {
+      'show': args.show,
+      'verbosity': args.verbose,
+      'max_cost': max_cost,
+      'max_time': max_time,
+      'min_time': min_time,
+      'fontsize': fontsize,
+      'label_fontsize': label_fontsize,
+      'ignore_non_optimal_planner': args.ignore_non_optimal_planner
+  }
   for fname in args.database_files:
-    plot_graph_from_database(fname, args.verbose, args.show, max_cost, max_time, min_time)
+    plot_graph_from_database(fname, plot_config)
 
 elif args.type == 1:
   if args.verbose > 0:

@@ -61,7 +61,26 @@ def get_experiment_names_from_database(cursor):
   experiment_names = []
   for experiment in experiments:
       experiment_name = experiment[1]
-      # print("Experiment {} has ID {}".format(experiment[1], experiment[0]))
+      experiment_names.append("Experiment {} [ID {}]".format(experiment[1], experiment[0]))
+  return experiment_names
+
+def assert_equivalent_experiment_names(cursor):
+  experiments = cursor.execute("SELECT id, name FROM {}".format('experiments')).fetchall()
+  if len(experiments) > 0:
+    name = experiments[0][1]
+    for experiment in experiments:
+      next_name = experiment[1]
+      if not (name == next_name):
+        return False
+
+  return True
+
+def get_experiment_names_from_database(cursor):
+  experiments = cursor.execute("SELECT id, name FROM {}".format('experiments')).fetchall()
+  experiment_names = []
+  for experiment in experiments:
+      experiment_name = experiment[1]
+      # experiment_names.append("Experiment {} [ID {}]".format(experiment[1], experiment[0]))
       experiment_names.append(experiment_name)
   return experiment_names
 
@@ -179,6 +198,34 @@ def print_metadata_from_database(cur):
   print("-- Experiments in database")
   print(80*"-")
   print(get_experiment_names_from_database(cur))
+
+
+def is_planner_optimal(planner):
+  name = get_label(planner[1])
+  if name == "RRT":
+    return False
+  elif name == "RRTConnect":
+    return False
+  elif name == "PRM":
+    return False
+  elif name == "EST":
+    return False
+  elif name == "BiEST":
+    return False
+  elif name == "RLRT":
+    return False
+  elif name == "BiRLRT":
+    return False
+  elif name == "TRRT":
+    return False
+  elif name == "BiTRRT":
+    return False
+  else:
+    return True
+
+def remove_non_optimal_planner(planners):
+  return [x for x in planners if is_planner_optimal(x)]
+
 
 def load_config():
     json_config = "config/default.json"
