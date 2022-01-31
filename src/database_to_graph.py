@@ -304,14 +304,26 @@ def plot_graph_from_databases(database_filepaths, config):
     if config['label_fontsize'] > 0:
       data["info"]['label_fontsize'] = config['label_fontsize']
 
+    experiment_names = []
     for database_filepath in database_filepaths:
       con = sqlite3.connect(database_filepath)
       cursor = con.cursor()
       get_json_from_database(cursor, data, config['verbosity'], config['ignore_non_optimal_planner'])
-      experiment_names = get_experiment_names_from_database(cursor)
-      if len(experiment_names) > 0 :
-        data["info"]["experiment"] = experiment_names[0]
+      experiment_names.append(get_experiment_names_from_database(cursor))
 
+    experiment_names = [item for sublist in experiment_names for item in sublist]
+    ############################################################
+    ### Verify that all experiment names match
+    ############################################################
+
+    if len(experiment_names) > 1:
+      print(80*'#')
+      print("WARN: Mismatching experiment names in database: {}".format(experiment_names))
+      print("EXPECTED: Same name.".format(experiment_names))
+      print(80*'#')
+
+    if len(experiment_names) > 0 :
+      data["info"]["experiment"] = experiment_names[0]
     ############################################################
     ### Create json file from data structure
     ############################################################

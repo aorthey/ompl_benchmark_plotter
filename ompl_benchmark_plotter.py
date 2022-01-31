@@ -46,7 +46,6 @@ if args.show:
     sys.exit(1)
 
 for fname in args.database_files:
-  # fname = args.database_file
   if fname is None or not os.path.isfile(fname):
     if args.verbose > 0:
       print("Error: {} is not a file.".format(fname))
