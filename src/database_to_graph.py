@@ -4,6 +4,8 @@ import json
 import os
 import sqlite3
 import numpy as np
+import matplotlib
+from packaging import version
 import matplotlib.pyplot as plt
 from matplotlib import font_manager, rcParams
 import argparse
@@ -218,7 +220,8 @@ def plot_success(ax, data):
           linestyle=get_line_style(data, planner), label=get_label(planner))
 
     ax.grid(True, which="both", ls='--')
-    ax.set_ylabel("success [%]", fontsize=fontsize)
+    ylabel = data['info']['ylabel_success']
+    ax.set_ylabel(ylabel, fontsize=fontsize)
 
 def plot_optimization(ax, data):
 
@@ -258,8 +261,10 @@ def plot_optimization(ax, data):
             marker=get_marker_style(data, planner), ms=10, lw=0.5)
 
     ax.grid(True, which="both", ls='--')
-    ax.set_xlabel("run time [s]", fontsize=fontsize)
-    ax.set_ylabel("solution cost", fontsize=fontsize)
+    ylabel = data['info']['ylabel_optimization']
+    xlabel = data['info']['xlabel']
+    ax.set_xlabel(xlabel, fontsize=fontsize)
+    ax.set_ylabel(ylabel, fontsize=fontsize)
 
 def json_to_graph(json_filepath, verbosity, show):
     with open(json_filepath, 'r') as jsonfile:
@@ -273,7 +278,17 @@ def json_to_graph(json_filepath, verbosity, show):
     label_fontsize = data['info']['label_fontsize']
     experiment_name = get_experiment_label(data["info"]["experiment"])
     axs[0].set_title(experiment_name, fontsize=fontsize)
-    axs[0].legend(loc='upper left', title='Planner', title_fontsize=label_fontsize, fontsize=label_fontsize)
+
+    legend_title_name = 'Planner'
+
+    matplotlib_version = version.parse(matplotlib.__version__)
+
+    if matplotlib_version < version.parse("3.0.0"):
+      axs[0].legend(loc='upper left', title=legend_title_name, fontsize=label_fontsize)
+      axs[0].legend.set_title(legend_title_name, prop={'size':label_fontsize})
+    else:
+      axs[0].legend(loc='upper left', title=legend_title_name, title_fontsize=label_fontsize, fontsize=label_fontsize)
+
     axs[0].tick_params(labelsize=label_fontsize)
     axs[1].tick_params(labelsize=label_fontsize)
 
@@ -312,6 +327,8 @@ def plot_graph_from_databases(database_filepaths, config):
       experiment_names.append(get_experiment_names_from_database(cursor))
 
     experiment_names = [item for sublist in experiment_names for item in sublist]
+    experiment_names = list(set(experiment_names))
+
     ############################################################
     ### Verify that all experiment names match
     ############################################################

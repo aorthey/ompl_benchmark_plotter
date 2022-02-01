@@ -14,7 +14,10 @@
   "ci_left": 39,
   "ci_right": 59,
   "fontsize": 30,
-  "label_fontsize": 20,
+  "label_fontsize": 18,
+  "ylabel_success": "success [%]",
+  "ylabel_optimization": "solution cost",
+  "xlabel": "run time [s]",
   "colors":  {
     "default": "red",
     "FMT": "gray",
