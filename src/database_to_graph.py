@@ -5,7 +5,6 @@ import os
 import sqlite3
 import numpy as np
 import matplotlib
-from packaging import version
 import matplotlib.pyplot as plt
 from matplotlib import font_manager, rcParams
 import argparse
@@ -281,13 +280,16 @@ def json_to_graph(json_filepath, verbosity, show):
 
     legend_title_name = 'Planner'
 
-    matplotlib_version = version.parse(matplotlib.__version__)
+    ## TODO Fix title fontsize
+    # matplotlib_version = version.parse(matplotlib.__version__)
+    # if matplotlib_version < version.parse("3.0.0"):
+    #   axs[0].legend(loc='upper left', title=legend_title_name, fontsize=label_fontsize)
+    #   axs[0].legend.set_title(legend_title_name, prop={'size':label_fontsize})
+    # else:
+    #   axs[0].legend(loc='upper left', title=legend_title_name, title_fontsize=label_fontsize, fontsize=label_fontsize)
+    legend = axs[0].legend(loc='upper left', title=legend_title_name, fontsize=label_fontsize)
+    plt.setp(legend.get_title(),fontsize=label_fontsize)
 
-    if matplotlib_version < version.parse("3.0.0"):
-      axs[0].legend(loc='upper left', title=legend_title_name, fontsize=label_fontsize)
-      axs[0].legend.set_title(legend_title_name, prop={'size':label_fontsize})
-    else:
-      axs[0].legend(loc='upper left', title=legend_title_name, title_fontsize=label_fontsize, fontsize=label_fontsize)
 
     axs[0].tick_params(labelsize=label_fontsize)
     axs[1].tick_params(labelsize=label_fontsize)
