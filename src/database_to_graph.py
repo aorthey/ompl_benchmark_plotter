@@ -48,16 +48,15 @@ def get_cost_results(cur, runids, times, max_cost, ci_left, ci_right):
 
     return [improvement, medians, quantile5, quantile95]
 
-def get_count_success(cur, runids, times, max_cost, ci_left, ci_right):
+def get_count_success(cur, run_count, runids, times, max_cost, ci_left, ci_right):
     success = np.zeros(len(times))
-
     for i in range(len(times)):
         data = np.array(cur.execute("SELECT a.best_cost FROM (SELECT MAX(time), \
           best_cost FROM {0} WHERE time<={1} AND runid in ({2}) GROUP BY runid) a".format('progress', times[i], runids)).fetchall()).flatten()
         if data.size == 0:
             success[i] = 0
         else:
-            success[i] = (sum(x is not None for x in data))
+            success[i] = ((sum(x is not None for x in data)) / run_count ) * 100.0
 
     return success
 
@@ -143,7 +142,7 @@ def get_json_from_database(cur, data, verbosity, ignore_non_optimal_planner=Fals
         data[planner_name]["median"] = results[1].tolist()
         data[planner_name]["quantile5"] = results[2].tolist()
         data[planner_name]["quantile95"] = results[3].tolist()
-        success = get_count_success(cur, runids, times, max_cost, ci_left, ci_right)
+        success = get_count_success(cur, len(runs), runids, times, max_cost, ci_left, ci_right)
         data[planner_name]["success"] = success.tolist()
       else:
         point_data = get_best_cost_from_runs(cur, planner_id, ci_left, ci_right)
@@ -323,6 +322,13 @@ def plot_graph_from_databases(database_filepaths, config):
 
     experiment_names = []
     for database_filepath in database_filepaths:
+      if not os.path.isfile(database_filepath):
+        print("WARN: {} is not a file".format(database_filepath))
+        continue
+      extension = os.path.splitext(database_filepath)[1]
+      if not (extension == '.db'):
+        print("WARN: {} is not a db file".format(database_filepath))
+        continue
       con = sqlite3.connect(database_filepath)
       cursor = con.cursor()
       get_json_from_database(cursor, data, config['verbosity'], config['ignore_non_optimal_planner'])
@@ -340,6 +346,12 @@ def plot_graph_from_databases(database_filepaths, config):
       print("WARN: Mismatching experiment names in database: {}".format(experiment_names))
       print("EXPECTED: Same name.".format(experiment_names))
       print(80*'#')
+
+    if len(experiment_names) < 1 :
+      print(80*'#')
+      print("ERROR: Could not load experiments.")
+      print(80*'#')
+      sys.exit(1)
 
     if len(experiment_names) > 0 :
       data["info"]["experiment"] = experiment_names[0]
