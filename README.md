@@ -1,9 +1,13 @@
 # ompl_benchmark_plotter
 
-Take a database file from an OMPL benchmark and generate graphs and tables.
+This is an easy-to-use script to quickly generate graphs and tables from benchmark database file(s)
+generated in the [Open Motion Planning Library
+(OMPL)](https://github.com/ompl/ompl).
+
 
 ## Functionality 1: Optimality Graphs
 
+Input: Any number of database files. They all should have a single environment. 
 ```
   ./ompl_benchmark_plotter.py examples/example.db -s
 ```
@@ -49,13 +53,23 @@ Take a database file from an OMPL benchmark and generate graphs and tables.
 ```
 
 # Dependencies
+
+To generate the tables, you need pdflatex and tex packages installed.
+
 ```
 sudo apt-get install texlive-latex-extra
-sudo apt-get install apvlv
 ```
 
 # TODO
 - [ ] Table benchmark-to-benchmark improvement script
-- [ ] Sum up multiple db files with same exp name
 - [ ] Deterministic way to automatically pick colors
 
+# Acknowledgements
+
+[@gammell](https://github.com/gammell): This repository has been created as a tool to easily generate graphs similar to the
+ones which [Jonathan Gammell](https://robotic-esp.com/people/gammell/) has used throughout his work (Check out his
+amazing work on [asymptotically-optimal motion planning](https://robotic-esp.com/code/bitstar/).)
+
+[@frangrothe](https://github.com/frangrothe): This library is also based upon earlier work by [Francesco Grothe](https://github.com/frangrothe),
+who used optimality graphs extensively for his cool work on time-based motion
+planning (Check it out here: https://github.com/frangrothe/bt-motion-planning).
