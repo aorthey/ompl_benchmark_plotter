@@ -153,7 +153,7 @@ def tex_table_from_json_data(database_filepaths, data, config):
     if config['verbosity'] > 0:
       print("Created pdf file {}".format(pdf_filepath))
     if config['show']:
-      os.system("apvlv %s" % pdf_filepath)
+      os.system("xdg-open %s" % pdf_filepath)
 
 def create_runtime_table_from_databases(database_filepaths, config):
     data = {}

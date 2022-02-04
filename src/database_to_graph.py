@@ -264,7 +264,7 @@ def plot_optimization(ax, data):
     ax.set_xlabel(xlabel, fontsize=fontsize)
     ax.set_ylabel(ylabel, fontsize=fontsize)
 
-def json_to_graph(json_filepath, verbosity, show):
+def json_to_graph(json_filepath, config):
     with open(json_filepath, 'r') as jsonfile:
         data = json.load(jsonfile)
 
@@ -278,28 +278,47 @@ def json_to_graph(json_filepath, verbosity, show):
     axs[0].set_title(experiment_name, fontsize=fontsize)
 
     legend_title_name = 'Planner'
+    if not config['legend_none']:
+      if config['legend_separate_file']:
+        figl, axl = plt.subplots()
+        label_params = axs[0].get_legend_handles_labels() 
+        legend = axl.legend(*label_params, loc="center", frameon=True, ncol=4, fontsize=fontsize)
+        for obj in legend.legendHandles:
+          obj.set_linewidth(3.0)
+        axl.axis('off')
+        legend_filepath = change_filename_extension(json_filepath, '_legend.pdf')
+        figl.savefig(legend_filepath, bbox_extra_artists=(legend,), bbox_inches='tight')
+        plt.close(figl)
 
-    ## TODO Fix title fontsize
-    # matplotlib_version = version.parse(matplotlib.__version__)
-    # if matplotlib_version < version.parse("3.0.0"):
-    #   axs[0].legend(loc='upper left', title=legend_title_name, fontsize=label_fontsize)
-    #   axs[0].legend.set_title(legend_title_name, prop={'size':label_fontsize})
-    # else:
-    #   axs[0].legend(loc='upper left', title=legend_title_name, title_fontsize=label_fontsize, fontsize=label_fontsize)
-    legend = axs[0].legend(loc='upper left', title=legend_title_name, fontsize=label_fontsize)
-    plt.setp(legend.get_title(),fontsize=label_fontsize)
+      elif config['legend_below_figure']:
+        label_params = axs[0].get_legend_handles_labels() 
+        legend = axs[1].legend(*label_params, loc='upper center', bbox_to_anchor=(0.5, -0.3),
+                      fancybox=True, ncol=4, fontsize=fontsize)
+        for obj in legend.legendHandles:
+          obj.set_linewidth(3.0)
+        plt.setp(legend.get_title(),fontsize=label_fontsize)
+      else:
+        legend = axs[0].legend(loc='upper left', title=legend_title_name, fontsize=label_fontsize)
+        for obj in legend.legendHandles:
+          obj.set_linewidth(2.0)
+        plt.setp(legend.get_title(),fontsize=label_fontsize)
 
 
     axs[0].tick_params(labelsize=label_fontsize)
     axs[1].tick_params(labelsize=label_fontsize)
 
-    pdf_filepath = json_filepath+'.pdf'
+    pdf_filepath = change_filename_extension(json_filepath, '.pdf')
     fig = plt.gcf()
-    plt.savefig(pdf_filepath, format='pdf', dpi=300, bbox_inches='tight')
-    if verbosity > 0:
-        print("Wrote pdf with dpi %d to file %s" %(fig.dpi,pdf_filepath))
-    if show:
-        plt.show()
+    if config['legend_separate_file'] or config['legend_none']:
+      plt.savefig(pdf_filepath, format='pdf', dpi=300, bbox_inches='tight')
+    else:
+      plt.savefig(pdf_filepath, format='pdf', dpi=300, bbox_inches='tight', bbox_extra_artists=(legend,))
+
+    if config['verbosity'] > 0:
+      print("Wrote pdf with dpi %d to file %s" %(fig.dpi,pdf_filepath))
+    if config['show']:
+      os.system('xdg-open %s' % pdf_filepath)
+
 
 def plot_graph_from_databases(database_filepaths, config):
     ############################################################
@@ -359,14 +378,13 @@ def plot_graph_from_databases(database_filepaths, config):
     ### Create json file from data structure
     ############################################################
     json_filepath = get_json_filepath_from_databases(database_filepaths)
-    pdf_filepath = get_pdf_from_database_filepaths(database_filepaths)
     with open(json_filepath, 'w') as jsonfile:
         json.dump(data, jsonfile, indent=4)
 
     ############################################################
     ### Plot json file
     ############################################################
-    json_to_graph(json_filepath, config['verbosity'], config['show'])
+    json_to_graph(json_filepath, config)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Plotting of Benchmark Files (especially for asymptotically-optimal planner).')

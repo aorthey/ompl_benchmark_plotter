@@ -182,15 +182,9 @@ def get_json_filepath_from_databases(filepaths):
   filename_without_extension = get_filename_from_database_filepaths(filepaths)
   return create_filename_with_extension(filename_without_extension, ".json")
 
-# def get_json_filepath_from_database(filepath): 
-#   directory = os.path.dirname(filepath)
-#   filename_without_extension = os.path.basename(filepath)
-#   filename_without_extension = os.path.splitext(filename_without_extension)[0]
-#   directory = directory + "/" + filename_without_extension + "/"
-#   if not os.path.exists(directory):
-#     os.makedirs(directory)
-#   json_filepath = directory + filename_without_extension + '.json'
-#   return json_filepath
+def change_filename_extension(filepath, extension):
+  filepath_without_extension = os.path.splitext(filepath)[0]
+  return filepath_without_extension + extension
 
 def print_metadata_from_database(cur):
   print(80*"-")

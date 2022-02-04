@@ -15,7 +15,7 @@ parser.add_argument('-t','--type', type=int, choices=[0,1], default=0, help='Sel
     optimality graphs, 1: create latex table of average runtimes).')
 parser.add_argument('-v','--verbose', type=int, choices=[0,1,2,3], default=1, help='Select verbosity level.')
 parser.add_argument('--quiet', action='store_const', const=True, help='Do not show any output. Invalidates any verbose values.')
-parser.add_argument('-s','--show', action='store_const', const=True, help='Show output as pdf (requires apvlv).')
+parser.add_argument('-s','--show', action='store_const', const=True, help='Show output as pdf (requires xdg-open).')
 
 #### Options for optimality graph
 graph_group = parser.add_argument_group("optimality graph options")
@@ -25,6 +25,11 @@ graph_group.add_argument('--min-time', type=float, help='Specify lower bound on 
 graph_group.add_argument('--fontsize', type=float, help='Fontsize of title and descriptions.')
 graph_group.add_argument('--label-fontsize', type=float, help='Fontsize of tick labels.')
 graph_group.add_argument('--ignore-non-optimal-planner', action='store_const', const=True, help='Do not plot non-optimal planner.')
+graph_group.add_argument('--legend-separate-file', action='store_const', const=True, help='Print legend as separate file.')
+graph_group.add_argument('--legend-below-figure', action='store_const',
+    const=True, help='Print legend below graph.')
+graph_group.add_argument('--legend-none', action='store_const',
+    const=True, help='Do not print legend.')
 
 #### Options for runtime table
 table_group = parser.add_argument_group("table options")
@@ -41,8 +46,8 @@ if args.quiet:
 ############################################################
 if args.show:
   from shutil import which
-  if which("apvlv") is None:
-    print("Error: Cannot run with --show option if apvlv is not installed.")
+  if which("xdg-open") is None:
+    print("Error: Cannot run with --show option if xdg-open is not installed.")
     sys.exit(1)
 
 for fname in args.database_files:
@@ -71,7 +76,10 @@ if args.type == 0:
       'min_time': min_time,
       'fontsize': fontsize,
       'label_fontsize': label_fontsize,
-      'ignore_non_optimal_planner': args.ignore_non_optimal_planner
+      'ignore_non_optimal_planner': args.ignore_non_optimal_planner,
+      'legend_below_figure': args.legend_below_figure,
+      'legend_separate_file': args.legend_separate_file,
+      'legend_none': args.legend_none
   }
   plot_graph_from_databases(args.database_files, plot_config)
   # for fname in args.database_files:
