@@ -51,12 +51,14 @@ def get_cost_results(cur, runids, times, max_cost, ci_left, ci_right):
 def get_count_success(cur, run_count, runids, times, max_cost, ci_left, ci_right):
     success = np.zeros(len(times))
     for i in range(len(times)):
+        ### Select from one time slice all best costs
         data = np.array(cur.execute("SELECT a.best_cost FROM (SELECT MAX(time), \
-          best_cost FROM {0} WHERE time<={1} AND runid in ({2}) GROUP BY runid) a".format('progress', times[i], runids)).fetchall()).flatten()
+              best_cost FROM {0} WHERE time<={1} AND runid in ({2}) GROUP BY runid) a".format('progress', times[i], runids)).fetchall()).flatten()
         if data.size == 0:
             success[i] = 0
         else:
-            success[i] = ((sum(x is not None for x in data)) / run_count ) * 100.0
+            sum_not_none = sum(x is not None for x in data)
+            success[i] = (sum_not_none / run_count ) * 100.0
 
     return success
 
@@ -81,10 +83,11 @@ def get_json_from_database(cur, data, verbosity, ignore_non_optimal_planner=Fals
   ############################################################
   ### Verify that all experiment names match
   ############################################################
-  if not assert_equivalent_experiment_names(cur):
-    print("Error: All experiment names in database have to match to plot \
-    optimality graph.")
-    sys.exit(0)
+  # if not assert_equivalent_experiment_names(cur):
+  #   print(get_experiment_names_from_database(cur))
+  #   print("Error: All experiment names in database have to match to plot \
+  #   optimality graph.")
+  #   sys.exit(0)
 
   ############################################################
   ### Print Average Success per Planner over Time
@@ -143,6 +146,7 @@ def get_json_from_database(cur, data, verbosity, ignore_non_optimal_planner=Fals
         data[planner_name]["quantile5"] = results[2].tolist()
         data[planner_name]["quantile95"] = results[3].tolist()
         success = get_count_success(cur, len(runs), runids, times, max_cost, ci_left, ci_right)
+        print("Planner {} success {} (runs {})".format(planner_name, success.tolist(), len(runs)))
         data[planner_name]["success"] = success.tolist()
       else:
         point_data = get_best_cost_from_runs(cur, planner_id, ci_left, ci_right)
@@ -221,7 +225,7 @@ def plot_success(ax, data):
     ylabel = data['info']['ylabel_success']
     ax.set_ylabel(ylabel, fontsize=fontsize)
 
-def plot_optimization(ax, data):
+def plot_optimization(ax, data, config):
 
     min_time = data["info"]["min_time"]["optimization"]
     max_time = data["info"]["max_time"]["optimization"]
@@ -270,7 +274,7 @@ def json_to_graph(json_filepath, config):
 
     fig, axs = plt.subplots(2, 1, sharex='col', figsize=(16,10))
     plot_success(axs[0], data)
-    plot_optimization(axs[1], data)
+    plot_optimization(axs[1], data, config)
 
     fontsize = data['info']['fontsize']
     label_fontsize = data['info']['label_fontsize']
@@ -328,6 +332,8 @@ def plot_graph_from_databases(database_filepaths, config):
     data["info"] = load_config()
     if config['max_cost'] > 0:
       data["info"]['max_cost'] = config['max_cost']
+    if config['min_cost'] > 0:
+      data["info"]['min_cost'] = config['min_cost']
     if config['max_time'] > 0:
       data["info"]['max_time']['success'] = config['max_time']
       data["info"]['max_time']['optimization'] = config['max_time']
@@ -363,7 +369,7 @@ def plot_graph_from_databases(database_filepaths, config):
     if len(experiment_names) > 1:
       print(80*'#')
       print("WARN: Mismatching experiment names in database: {}".format(experiment_names))
-      print("EXPECTED: Same name.".format(experiment_names))
+      print("EXPECTED: Same name. Proceed with caution.".format(experiment_names))
       print(80*'#')
 
     if len(experiment_names) < 1 :
@@ -373,7 +379,7 @@ def plot_graph_from_databases(database_filepaths, config):
       sys.exit(1)
 
     if len(experiment_names) > 0 :
-      data["info"]["experiment"] = experiment_names[0]
+      data["info"]["experiment"] = get_experiment_name_from_array(experiment_names)
     ############################################################
     ### Create json file from data structure
     ############################################################

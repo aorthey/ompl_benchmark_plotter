@@ -24,12 +24,13 @@
     "BFMT": "black",
     "RRTConnect": "red",
     "RRT": "cyan",
+    "PRM*": "lightblue",
     "LBTRRT": "orange",
     "kBIT*": "blue",
     "AIT*": "yellow",
     "RRT*": "purple",
     "KPIECE1": "green",
-    "RRTXstatic": "green"
+    "RRTXstatic": "lightgreen"
   },
   "linestyle": "-",
   "markerstyle": "x"

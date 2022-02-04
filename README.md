@@ -51,11 +51,9 @@ Take a database file from an OMPL benchmark and generate graphs and tables.
 # Dependencies
 ```
 sudo apt-get install texlive-latex-extra
-sudo apt-get install apvlv
 ```
 
 # TODO
 - [ ] Table benchmark-to-benchmark improvement script
-- [ ] Sum up multiple db files with same exp name
 - [ ] Deterministic way to automatically pick colors
 

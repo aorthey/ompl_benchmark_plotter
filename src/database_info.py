@@ -2,6 +2,7 @@ import json
 import os
 import numpy as np
 import sqlite3
+from pathlib import Path
 from src.plot_style import *
 
 def get_tables_from_database(cursor):
@@ -59,6 +60,12 @@ def get_experiment_names_from_database(cursor):
       experiment_name = experiment[1]
       experiment_names.append("Experiment {} [ID {}]".format(experiment[1], experiment[0]))
   return experiment_names
+
+def get_experiment_name_from_array(experiment_names):
+  if len(experiment_names) < 1:
+    return "unknown"
+  else:
+    return experiment_names[0]
 
 def assert_equivalent_experiment_names(cursor):
   experiments = cursor.execute("SELECT id, name FROM {}".format('experiments')).fetchall()
@@ -229,7 +236,8 @@ def remove_non_optimal_planner(planners):
 
 
 def load_config():
-    json_config = "config/default.json"
+    cwd = Path(__file__).parent.absolute()
+    json_config = "{}/../config/default.json".format(cwd)
     with open(json_config, 'r') as jsonfile:
         info = json.load(jsonfile)
     return info

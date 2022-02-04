@@ -20,6 +20,7 @@ parser.add_argument('-s','--show', action='store_const', const=True, help='Show 
 #### Options for optimality graph
 graph_group = parser.add_argument_group("optimality graph options")
 graph_group.add_argument('--max-cost', type=float, help='Specify upper bound on cost display.')
+graph_group.add_argument('--min-cost', type=float, help='Specify lower bound on cost display.')
 graph_group.add_argument('--max-time', type=float, help='Specify upper bound on time display.')
 graph_group.add_argument('--min-time', type=float, help='Specify lower bound on time display.')
 graph_group.add_argument('--fontsize', type=float, help='Fontsize of title and descriptions.')
@@ -64,6 +65,7 @@ if args.type == 0:
     print("Create optimality graphs for {} files.".format(len(args.database_files)))
 
   max_cost = args.max_cost if args.max_cost else -1
+  min_cost = args.min_cost if args.min_cost else -1
   max_time = args.max_time if args.max_time else -1
   min_time = args.min_time if args.min_time else -1
   fontsize = args.fontsize if args.fontsize else -1
@@ -72,6 +74,7 @@ if args.type == 0:
       'show': args.show,
       'verbosity': args.verbose,
       'max_cost': max_cost,
+      'min_cost': min_cost,
       'max_time': max_time,
       'min_time': min_time,
       'fontsize': fontsize,
