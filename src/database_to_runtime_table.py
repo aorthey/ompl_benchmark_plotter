@@ -186,7 +186,6 @@ def create_runtime_table_from_databases(database_filepaths, config):
           times_per_run = cursor.execute("SELECT time FROM {} WHERE plannerid={} AND experimentid={}".format('runs', planner_id, experiment_id)).fetchall()
           times = np.array(times_per_run)
           if is_planner_optimal(planner_name):
-            print(planner_name+"is optimal")
             times = 0*times
 
           solved_per_run = cursor.execute("SELECT solved FROM {} WHERE plannerid={} AND experimentid={}".format('runs', planner_id, experiment_id)).fetchall()

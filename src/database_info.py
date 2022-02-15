@@ -236,8 +236,7 @@ def is_planner_optimal(planner):
     return True
 
 def remove_non_optimal_planner(planners):
-  return [x for x in planners if is_planner_optimal(x)]
-
+  return [x for x in planners if is_planner_optimal(x[1])]
 
 def load_config():
     cwd = Path(__file__).parent.absolute()
