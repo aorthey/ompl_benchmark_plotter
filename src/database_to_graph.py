@@ -279,7 +279,11 @@ def json_to_graph(json_filepath, config):
     fontsize = data['info']['fontsize']
     label_fontsize = data['info']['label_fontsize']
     experiment_name = get_experiment_label(data["info"]["experiment"])
-    axs[0].set_title(experiment_name, fontsize=fontsize)
+
+    if not config['title_name']:
+      axs[0].set_title(experiment_name, fontsize=fontsize)
+    else:
+      axs[0].set_title(config['title_name'], fontsize=fontsize)
 
     legend_title_name = 'Planner'
     if not config['legend_none']:

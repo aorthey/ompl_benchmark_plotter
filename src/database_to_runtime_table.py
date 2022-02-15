@@ -182,10 +182,15 @@ def create_runtime_table_from_databases(database_filepaths, config):
           planner_name = planner[1]
 
           run_count = cursor.execute("SELECT COUNT(*) FROM {} WHERE plannerid={} AND experimentid={}".format('runs', planner_id, experiment_id)).fetchall()[0][0]
+
           times_per_run = cursor.execute("SELECT time FROM {} WHERE plannerid={} AND experimentid={}".format('runs', planner_id, experiment_id)).fetchall()
+          times = np.array(times_per_run)
+          if is_planner_optimal(planner_name):
+            print(planner_name+"is optimal")
+            times = 0*times
+
           solved_per_run = cursor.execute("SELECT solved FROM {} WHERE plannerid={} AND experimentid={}".format('runs', planner_id, experiment_id)).fetchall()
 
-          times = np.array(times_per_run)
           success_percentage = np.sum(np.array(solved_per_run).flatten())/run_count
           time_mean = np.mean(times)
           planner_data[planner_name] = { 'time_mean' : time_mean,
@@ -200,6 +205,10 @@ def create_runtime_table_from_databases(database_filepaths, config):
         if best_time < float("inf"):
           planner_data[best_planner]['best_planner'] = True
 
+        if config['ignore_ending_name']:
+          experiment_name = experiment_name.rsplit('_', 1)[0]
+          print(experiment_name)
+
         if not experiment_name in data['experiments']:
           data['experiments'][experiment_name] = planner_data
         else:
@@ -208,18 +217,5 @@ def create_runtime_table_from_databases(database_filepaths, config):
           data['experiments'][experiment_name] = planner_data
 
     if len(database_filepaths) > 0:
-      tex_table_from_json_data(database_filepaths, data, config)#verbosity, show, reverse_table)
+      tex_table_from_json_data(database_filepaths, data, config)
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Plotting of Benchmark Files (especially for asymptotically-optimal planner).')
-    parser.add_argument('database_file', type=str, nargs='?', help='Database (.db) file')
-    args = parser.parse_args()
-
-    fname = args.database_file
-    if fname is None:
-      fname="data/example.db"
-
-    if os.path.isfile(fname):
-      create_runtime_table_from_database(fname)
-    else:
-      print("Error: {} is not a file.".format(fname))

@@ -209,7 +209,7 @@ def print_metadata_from_database(cur):
 
 
 def is_planner_optimal(planner):
-  name = get_label(planner[1])
+  name = get_label(planner)
   if name == "RRT":
     return False
   elif name == "RRTConnect":
@@ -227,6 +227,10 @@ def is_planner_optimal(planner):
   elif name == "TRRT":
     return False
   elif name == "BiTRRT":
+    return False
+  elif name == "FMT":
+    return False
+  elif name == "BFMT":
     return False
   else:
     return True

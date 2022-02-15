@@ -31,6 +31,7 @@ graph_group.add_argument('--legend-below-figure', action='store_const',
     const=True, help='Print legend below graph.')
 graph_group.add_argument('--legend-none', action='store_const',
     const=True, help='Do not print legend.')
+graph_group.add_argument('--title-name', action='store', type=str, help='Set title name.')
 
 #### Options for runtime table
 table_group = parser.add_argument_group("table options")
@@ -38,6 +39,9 @@ table_group.add_argument('--table-hide-variance', action='store_const', const=Tr
 table_group.add_argument('--reverse-table', action='store_const', const=True, \
     help='Reverse positions of planners and scenarios in table (default: \
     planners on y-axis, scenarios on x-axis).')
+table_group.add_argument('--ignore-ending-name', action='store_const', const=True, \
+        help='In environment names, ignore anything beyond the last occurence of \
+        "_", for example "Name_01" and "Name_02" are considered as "Name".')
 args = parser.parse_args()
 if args.quiet:
   args.verbose = 0
@@ -84,6 +88,9 @@ if args.type == 0:
       'legend_separate_file': args.legend_separate_file,
       'legend_none': args.legend_none
   }
+  # title_name = args.title_name if args.title_name else -1
+  if args.title_name:
+    plot_config['title_name'] = args.title_name
   plot_graph_from_databases(args.database_files, plot_config)
   # for fname in args.database_files:
   #   plot_graph_from_database(fname, plot_config)
@@ -95,7 +102,8 @@ elif args.type == 1:
       'show': args.show,
       'verbosity': args.verbose,
       'reverse': args.reverse_table,
-      'hide_variance': args.table_hide_variance
+      'hide_variance': args.table_hide_variance,
+      'ignore_ending_name': args.ignore_ending_name
   }
   create_runtime_table_from_databases(args.database_files, table_config)
 else:
