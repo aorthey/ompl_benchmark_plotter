@@ -48,20 +48,6 @@ def get_cost_results(cur, runids, times, max_cost, ci_left, ci_right):
 
     return [improvement, medians, quantile5, quantile95]
 
-def get_count_success(cur, run_count, runids, times, max_cost, ci_left, ci_right):
-    success = np.zeros(len(times))
-    for i in range(len(times)):
-        ### Select from one time slice all best costs
-        data = np.array(cur.execute("SELECT a.best_cost FROM (SELECT MAX(time), \
-              best_cost FROM {0} WHERE time<={1} AND runid in ({2}) GROUP BY runid) a".format('progress', times[i], runids)).fetchall()).flatten()
-        if data.size == 0:
-            success[i] = 0
-        else:
-            sum_not_none = sum(x is not None for x in data)
-            success[i] = (sum_not_none / run_count ) * 100.0
-
-    return success
-
 def get_json_from_database(cur, data, verbosity, ignore_non_optimal_planner=False):
   if verbosity > 1:
     print(80*"-")
@@ -97,8 +83,7 @@ def get_json_from_database(cur, data, verbosity, ignore_non_optimal_planner=Fals
     print("-- Runs per planner ")
     print(80*"-")
 
-  times = np.logspace(np.log10(data["info"]["min_time"]["success"]), np.log10(data["info"]["max_time"]["success"]),
-                      data["info"]["resolution"])
+  times = create_time_space(data)
 
   planners = cur.execute("SELECT id, name FROM {}".format('plannerConfigs')).fetchall()
   if ignore_non_optimal_planner:
@@ -145,7 +130,7 @@ def get_json_from_database(cur, data, verbosity, ignore_non_optimal_planner=Fals
         data[planner_name]["median"] = results[1].tolist()
         data[planner_name]["quantile5"] = results[2].tolist()
         data[planner_name]["quantile95"] = results[3].tolist()
-        success = get_count_success(cur, len(runs), runids, times, max_cost, ci_left, ci_right)
+        success = get_count_success(cur, len(runs), runids, times)
         print("Planner {} success {} (runs {})".format(planner_name, success.tolist(), len(runs)))
         data[planner_name]["success"] = success.tolist()
       else:
@@ -268,7 +253,7 @@ def plot_optimization(ax, data, config):
     ax.set_xlabel(xlabel, fontsize=fontsize)
     ax.set_ylabel(ylabel, fontsize=fontsize)
 
-def json_to_graph(json_filepath, config):
+def json_to_graph(json_filepath, pdf_filepath, config):
     with open(json_filepath, 'r') as jsonfile:
         data = json.load(jsonfile)
 
@@ -315,7 +300,6 @@ def json_to_graph(json_filepath, config):
     axs[0].tick_params(labelsize=label_fontsize)
     axs[1].tick_params(labelsize=label_fontsize)
 
-    pdf_filepath = change_filename_extension(json_filepath, '.pdf')
     fig = plt.gcf()
     if config['legend_separate_file'] or config['legend_none']:
       plt.savefig(pdf_filepath, format='pdf', dpi=300, bbox_inches='tight')
@@ -392,9 +376,16 @@ def plot_graph_from_databases(database_filepaths, config):
         json.dump(data, jsonfile, indent=4)
 
     ############################################################
-    ### Plot json file
+    ### Plot json file to pdf
     ############################################################
-    json_to_graph(json_filepath, config)
+
+    if config['output_file']:
+      name = config['output_file']
+      pdf_filepath = get_filename_from_database_filepaths_and_name(database_filepaths, name)
+    else:
+      pdf_filepath = change_filename_extension(json_filepath, '.pdf')
+
+    json_to_graph(json_filepath, pdf_filepath, config)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Plotting of Benchmark Files (especially for asymptotically-optimal planner).')

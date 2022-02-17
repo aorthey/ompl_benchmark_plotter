@@ -13,7 +13,6 @@ def get_label(planner_name):
 
 def get_experiment_label(experiment_name):
   name = experiment_name.replace("_"," ")
-  # name = name.rstrip("_benchmark")
   name = name.title()
   return name
 

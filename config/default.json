@@ -1,6 +1,7 @@
 {
   "alpha_percentile": 0.4,
   "resolution": 200,
+  "resolution_linear": 10,
   "min_time": {
       "success": 0.001,
       "optimization": 0.001
@@ -24,12 +25,14 @@
     "BFMT": "black",
     "RRTConnect": "red",
     "RRT": "cyan",
-    "PRM*": "lightblue",
+    "PRM*": "linen",
     "LBTRRT": "orange",
     "kBIT*": "blue",
     "AIT*": "yellow",
+    "SST": "plum",
     "RRT*": "purple",
-    "KPIECE1": "green",
+    "kABIT*": "turquoise",
+    "InformedRRT*": "green",
     "RRTXstatic": "lightgreen"
   },
   "linestyle": "-",

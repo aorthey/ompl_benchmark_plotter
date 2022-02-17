@@ -14,8 +14,15 @@ from src.database_info import *
 
 def tex_table_from_json_data(database_filepaths, data, config):
 
-    tex_filepath = get_tex_from_database_filepaths(database_filepaths)
-    pdf_filepath = get_pdf_from_database_filepaths(database_filepaths)
+    if config['output_file']:
+      name = config['output_file']
+      tex_name = change_filename_extension(name, ".tex")
+      pdf_name = change_filename_extension(name, ".pdf")
+      tex_filepath = get_filename_from_database_filepaths_and_name(database_filepaths, tex_name)
+      pdf_filepath = get_filename_from_database_filepaths_and_name(database_filepaths, pdf_name)
+    else:
+      tex_filepath = get_tex_from_database_filepaths(database_filepaths)
+      pdf_filepath = get_pdf_from_database_filepaths(database_filepaths)
 
     ############################################################
     ## Map planner to experiments
@@ -100,7 +107,7 @@ def tex_table_from_json_data(database_filepaths, data, config):
         pstr = str(ctr+1) + " & \\mbox{" + str(label) + "} & "
         for (pctr, planner) in enumerate(planner_map):
           if experiment in planner_map[planner]:
-            pstr += get_cell_entry(data, experiment, planner, config['hide_variance'])
+            pstr += get_cell_entry(data, experiment, planner, config)
           else:
             pstr += "$-$"
           if pctr < len(planner_map) - 1:
@@ -114,7 +121,7 @@ def tex_table_from_json_data(database_filepaths, data, config):
         pstr = str(ctr+1) + " & \\mbox{" + str(label) + "} & "
         for (ctr, experiment) in enumerate(data['experiments']):
           if experiment in planner_map[planner]:
-            pstr += get_cell_entry(data, experiment, planner, config['hide_variance'])
+            pstr += get_cell_entry(data, experiment, planner, config)
           else:
             pstr += "$-$"
 
@@ -158,20 +165,25 @@ def tex_table_from_json_data(database_filepaths, data, config):
 def create_runtime_table_from_databases(database_filepaths, config):
     data = {}
     data["info"] = load_config()
-    data["info"]['timelimit'] = 0
-    data['info']['run_count'] = 0
+    data["info"]["timelimit"] = 0
+    data["info"]["run_count"] = 0
     data["experiments"] = {}
+
     for database_filepath in database_filepaths:
       con = sqlite3.connect(database_filepath)
       cursor = con.cursor()
       if config['verbosity'] > 1:
         print_metadata_from_database(cursor)
+      if config['verbosity'] > 2:
+        get_run_results_from_database(cursor)
 
       experiments = cursor.execute("SELECT id, name FROM {}".format('experiments')).fetchall()
       for experiment in experiments:
         experiment_name = experiment[1]
         experiment_id = experiment[0]
         timelimit = get_time_limit_for_experiment(cursor, experiment_id)
+        data["info"]["timelimit"] = timelimit
+        timespace = create_time_space_linear(data)
         planners = cursor.execute("SELECT id, name FROM {}".format('plannerConfigs')).fetchall()
         planner_data = {}
         best_time = float("inf")
@@ -186,7 +198,11 @@ def create_runtime_table_from_databases(database_filepaths, config):
           times_per_run = cursor.execute("SELECT time FROM {} WHERE plannerid={} AND experimentid={}".format('runs', planner_id, experiment_id)).fetchall()
           times = np.array(times_per_run)
           if is_planner_optimal(planner_name):
-            times = 0*times
+            getids = cursor.execute("SELECT id FROM {} WHERE plannerid={}".format('runs',planner_id)).fetchall()
+            runs = np.array(getids).flatten()
+            runids = ','.join(str(run) for run in runs)
+            success = get_count_success(cursor, len(runs), runids, timespace)
+            times = get_times_from_success_over_time(success, timespace)
 
           solved_per_run = cursor.execute("SELECT solved FROM {} WHERE plannerid={} AND experimentid={}".format('runs', planner_id, experiment_id)).fetchall()
 
@@ -206,13 +222,11 @@ def create_runtime_table_from_databases(database_filepaths, config):
 
         if config['ignore_ending_name']:
           experiment_name = experiment_name.rsplit('_', 1)[0]
-          print(experiment_name)
 
         if not experiment_name in data['experiments']:
           data['experiments'][experiment_name] = planner_data
         else:
           planner_data = combine_planner_data(data['experiments'][experiment_name], planner_data)
-          print("combine robots")
           data['experiments'][experiment_name] = planner_data
 
     if len(database_filepaths) > 0:

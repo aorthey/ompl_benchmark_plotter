@@ -1,9 +1,55 @@
 import json
 import os
+import sys
 import numpy as np
 import sqlite3
+from itertools import repeat
 from pathlib import Path
 from src.plot_style import *
+
+def is_planner_optimal(planner):
+  name = get_label(planner)
+  if name == "RRT":
+    return False
+  elif name == "RRTConnect":
+    return False
+  elif name == "PRM":
+    return False
+  elif name == "EST":
+    return False
+  elif name == "BiEST":
+    return False
+  elif name == "RLRT":
+    return False
+  elif name == "BiRLRT":
+    return False
+  elif name == "TRRT":
+    return False
+  elif name == "BiTRRT":
+    return False
+  elif name == "FMT":
+    return False
+  elif name == "BFMT":
+    return False
+  elif name == "KPIECE1":
+    return False
+  elif name == "BKPIECE1":
+    return False
+  elif name == "ProjEST":
+    return False
+  elif name == "PDST":
+    return False
+  elif name == "STRIDE":
+    return False
+  elif name == "SBL":
+    return False
+  elif name == "SORRT*":
+    return False
+  else:
+    return True
+
+def remove_non_optimal_planner(planners):
+  return [x for x in planners if is_planner_optimal(x[1])]
 
 def get_tables_from_database(cursor):
   tables = cursor.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").fetchall()
@@ -126,8 +172,22 @@ def get_run_results_from_database(cursor):
     getids = cursor.execute("SELECT id FROM {} WHERE plannerid={}".format('runs',planner_id)).fetchall()
     runs = np.array(getids).flatten()
     runids = ','.join(str(run) for run in runs)
+
+    exp_getids = cursor.execute("SELECT id FROM {}".format('experiments')).fetchall()
+    exps = np.array(exp_getids).flatten()
+    expids = ','.join(str(exp) for exp in exps)
+
+    print("Run ids {}".format(runids))
+    print("Exp ids {}".format(expids))
+
     if has_best_cost(cursor):
       data = np.array(cursor.execute("SELECT time, best_cost FROM {} WHERE runid in ({})".format('progress', runids)).fetchall()).flatten()
+      if len(data) > 0:
+        print("Planner {} with time {} and cost {}".format(planner[1], data[0], data[1]))
+    else:
+      data = np.array(cursor.execute("SELECT time FROM {} WHERE id in ({}) and \
+        experimentid in ({})".format('runs', runids, expids)).fetchall()).flatten()
+      print("Planner {} with time {}".format(planner[1], np.around(data)))
 
   for planner in planners:
     planner_id = planner[0]
@@ -139,6 +199,14 @@ def get_run_results_from_database(cursor):
       if len(data) > 0:
         print("Planner {} with time {} and cost {}".format(planner[1], data[0], data[1]))
 
+
+def get_filename_from_database_filepaths_and_name(filepaths, name):
+  if len(filepaths) <= 0:
+    return "unknown"
+  filepath = filepaths[0]
+  directory = os.path.dirname(filepath)
+  filename = directory + "/" + name
+  return filename
 
 def get_filename_from_database_filepaths(filepaths):
   if len(filepaths) <= 0:
@@ -165,7 +233,9 @@ def get_tex_from_database_filepaths(filepaths):
   filename_without_extension = get_filename_from_database_filepaths(filepaths)
   return create_filename_with_extension(filename_without_extension, ".tex")
 
-def get_cell_entry(data, experiment, planner, hide_variance=False):
+def get_cell_entry(data, experiment, planner, config):
+  hide_variance = config['hide_variance']
+  decimals = int(config['decimals'])
   time = data['experiments'][experiment][planner]['time_mean']
   timelimit = data['experiments'][experiment][planner]['time_limit']
   if time > timelimit:
@@ -177,11 +247,11 @@ def get_cell_entry(data, experiment, planner, hide_variance=False):
 
   cell_entry = "$"
   if best:
-    cell_entry += "\\textbf{%.2f}"%(time)
+    cell_entry += "\\textbf{%.*f}"%(decimals, time)
   else:
-    cell_entry += "%.2f"%(time)
+    cell_entry += "%.*f"%(decimals, time)
   if not hide_variance:
-    cell_entry += "\\color{gray}{\\pm %.2f}"%(var)
+    cell_entry += "\\color{gray}{\\pm %.*f}"%(decimals, var)
   cell_entry += "$"
   return cell_entry
 
@@ -207,36 +277,43 @@ def print_metadata_from_database(cur):
   print(80*"-")
   print(get_experiment_names_from_database(cur))
 
+def create_time_space(data):
+  return np.logspace(np.log10(data["info"]["min_time"]["success"]), \
+      np.log10(data["info"]["max_time"]["success"]), \
+                      data["info"]["resolution"])
+def create_time_space_linear(data):
+  return np.linspace(0, data["info"]["timelimit"], \
+                      data["info"]["resolution_linear"])
 
-def is_planner_optimal(planner):
-  name = get_label(planner)
-  if name == "RRT":
-    return False
-  elif name == "RRTConnect":
-    return False
-  elif name == "PRM":
-    return False
-  elif name == "EST":
-    return False
-  elif name == "BiEST":
-    return False
-  elif name == "RLRT":
-    return False
-  elif name == "BiRLRT":
-    return False
-  elif name == "TRRT":
-    return False
-  elif name == "BiTRRT":
-    return False
-  elif name == "FMT":
-    return False
-  elif name == "BFMT":
-    return False
-  else:
-    return True
+def get_times_from_success_over_time(success, timespace):
+  # input: number of successes for each time element
+  all_count = 0
+  times = []
+  for (count, time) in zip(success, timespace):
+    Nitems = int(count - all_count)
+    if Nitems > 0:
+      times.extend(repeat(time, Nitems))
+      all_count = count
+  ## add last time element to fill it up for unsuccessful runs
+  if len(times) < 100:
+    times.extend(repeat(time, 100-len(times)))
+  times = np.array(times)
+  return times
 
-def remove_non_optimal_planner(planners):
-  return [x for x in planners if is_planner_optimal(x[1])]
+def get_count_success(cur, run_count, runids, times):
+    success = np.zeros(len(times))
+    for i in range(len(times)):
+        ### Select from one time slice all best costs
+        data = np.array(cur.execute("SELECT a.best_cost FROM (SELECT MAX(time), \
+              best_cost FROM {0} WHERE time<={1} AND runid in ({2}) GROUP BY runid) a".format('progress', times[i], runids)).fetchall()).flatten()
+        if data.size == 0:
+            success[i] = 0
+        else:
+            sum_not_none = sum(x is not None for x in data)
+            success[i] = (sum_not_none / run_count ) * 100.0
+
+    return success
+
 
 def load_config():
     cwd = Path(__file__).parent.absolute()
