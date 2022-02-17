@@ -139,10 +139,16 @@ def get_json_from_database(cur, data, verbosity, ignore_non_optimal_planner=Fals
             point_data = max_point(max_time, max_cost)
         data[planner_name]["point"] = point_data
   else:
+    if verbosity > 0:
+      print("WARNING: No best_cost entry in database file. Using solution_length instead.")
     for planner in planners:
+      planner_id = planner[0]
       planner_name = planner[1]
       data[planner_name]["optimization_success"] = False
-      point_data = max_point(max_time, max_cost)
+
+      point_data = get_best_cost_from_runs(cur, planner_id, ci_left, ci_right)
+      if point_data is None:
+          point_data = max_point(max_time, max_cost)
       data[planner_name]["point"] = point_data
 
 
@@ -265,10 +271,10 @@ def json_to_graph(json_filepath, pdf_filepath, config):
     label_fontsize = data['info']['label_fontsize']
     experiment_name = get_experiment_label(data["info"]["experiment"])
 
-    if not config['title_name']:
-      axs[0].set_title(experiment_name, fontsize=fontsize)
-    else:
+    if 'title_name' in config:
       axs[0].set_title(config['title_name'], fontsize=fontsize)
+    else:
+      axs[0].set_title(experiment_name, fontsize=fontsize)
 
     legend_title_name = 'Planner'
     if not config['legend_none']:
