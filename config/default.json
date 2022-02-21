@@ -25,7 +25,7 @@
     "BFMT": "black",
     "RRTConnect": "red",
     "RRT": "cyan",
-    "PRM*": "linen",
+    "PRM*": "darksalmon",
     "LBTRRT": "orange",
     "kBIT*": "blue",
     "AIT*": "yellow",
