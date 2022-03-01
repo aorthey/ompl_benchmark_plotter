@@ -12,8 +12,10 @@
   },
   "min_cost": 0,
   "max_cost": 100,
-  "ci_left": 39,
-  "ci_right": 59,
+  "ci_left": 25,
+  "ci_left_default": 39,
+  "ci_right": 75,
+  "ci_right_default": 59,
   "fontsize": 30,
   "label_fontsize": 18,
   "ylabel_success": "success [%]",
@@ -28,14 +30,18 @@
     "PRM*": "darksalmon",
     "LBTRRT": "orange",
     "kBIT*": "blue",
+    "BIT*": "blue",
     "AIT*": "yellow",
     "SST": "plum",
     "RRT*": "purple",
     "kABIT*": "turquoise",
     "InformedRRT*": "green",
-    "RRTXstatic": "lightgreen"
+    "RRTXstatic": "lightgreen",
+    "BITKOMO": "green"
   },
   "linestyle": "-",
+  "linewidth": "3",
+  "legend_linewidth": "5",
   "markerstyle": "x"
 }
 

@@ -9,6 +9,7 @@ def get_label(planner_name):
   name = planner_name.lstrip("geometric_")
   name = name.replace("Star","*")
   name = name.replace("star","*")
+  name = name.replace("kBIT","BIT")
   return name
 
 def get_experiment_label(experiment_name):

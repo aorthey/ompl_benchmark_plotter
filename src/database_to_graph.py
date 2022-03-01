@@ -14,17 +14,14 @@ from src.plot_style import *
 
 font_path = "config/cmr10.ttf"
 
-# font_manager.fontManager.addfont(font_path)
-# fprop = font_manager.FontProperties(fname=font_path)
-# plt.rcParams['font.family'] = 'sans-serif'
-# plt.rcParams['font.sans-serif'] = fprop.get_name()
-
 fe = font_manager.FontEntry(
     fname=font_path,
     name='cmr10')
 font_manager.fontManager.ttflist.insert(0, fe)
 plt.rcParams['font.family'] = fe.name
 plt.rcParams['mathtext.fontset']='cm'
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
 
 def get_cost_results(cur, runids, times, max_cost, ci_left, ci_right):
     medians = np.zeros(len(times))
@@ -48,7 +45,10 @@ def get_cost_results(cur, runids, times, max_cost, ci_left, ci_right):
 
     return [improvement, medians, quantile5, quantile95]
 
-def get_json_from_database(cur, data, verbosity, ignore_non_optimal_planner=False):
+def get_json_from_database(cur, data, config):
+  verbosity = config["verbosity"]
+  ignore_non_optimal_planner = config["ignore_non_optimal_planner"]
+
   if verbosity > 1:
     print(80*"-")
     print("-- Tables in database file")
@@ -132,6 +132,7 @@ def get_json_from_database(cur, data, verbosity, ignore_non_optimal_planner=Fals
         data[planner_name]["quantile95"] = results[3].tolist()
         success = get_count_success(cur, len(runs), runids, times)
         print("Planner {} success {} (runs {})".format(planner_name, success.tolist(), len(runs)))
+        print("Planner {} median {} (runs {})".format(planner_name, results[1].tolist(), len(runs)))
         data[planner_name]["success"] = success.tolist()
       else:
         point_data = get_best_cost_from_runs(cur, planner_id, ci_left, ci_right)
@@ -210,7 +211,8 @@ def plot_success(ax, data):
 
       success_over_time = data[planner]["success"]
       ax.plot(times, success_over_time, color=get_color(data, planner),
-          linestyle=get_line_style(data, planner), label=get_label(planner))
+          linestyle=get_line_style(data, planner),
+          linewidth=data["info"]["linewidth"], label=get_label(planner))
 
     ax.grid(True, which="both", ls='--')
     ylabel = data['info']['ylabel_success']
@@ -243,7 +245,7 @@ def plot_optimization(ax, data, config):
 
         start = get_start_index(planner_median, times, max_cost)
         ax.plot(times[start:], planner_median[start:], color=get_color(data,
-          planner), label=get_label(planner))
+          planner), linewidth=data["info"]["linewidth"], label=get_label(planner))
         ax.fill_between(times[start:], planner_q5[start:], planner_q95[start:],
             color=get_color(data, planner), alpha=data["info"]["alpha_percentile"])
       else:
@@ -283,7 +285,7 @@ def json_to_graph(json_filepath, pdf_filepath, config):
         label_params = axs[0].get_legend_handles_labels() 
         legend = axl.legend(*label_params, loc="center", frameon=True, ncol=4, fontsize=fontsize)
         for obj in legend.legendHandles:
-          obj.set_linewidth(3.0)
+          obj.set_linewidth(data["info"]["legend_linewidth"])
         axl.axis('off')
         legend_filepath = change_filename_extension(json_filepath, '_legend.pdf')
         figl.savefig(legend_filepath, bbox_extra_artists=(legend,), bbox_inches='tight')
@@ -294,14 +296,13 @@ def json_to_graph(json_filepath, pdf_filepath, config):
         legend = axs[1].legend(*label_params, loc='upper center', bbox_to_anchor=(0.5, -0.3),
                       fancybox=True, ncol=4, fontsize=fontsize)
         for obj in legend.legendHandles:
-          obj.set_linewidth(3.0)
+          obj.set_linewidth(data["info"]["legend_linewidth"])
         plt.setp(legend.get_title(),fontsize=label_fontsize)
       else:
         legend = axs[0].legend(loc='upper left', title=legend_title_name, fontsize=label_fontsize)
         for obj in legend.legendHandles:
-          obj.set_linewidth(2.0)
+          obj.set_linewidth(data["info"]["legend_linewidth"])
         plt.setp(legend.get_title(),fontsize=label_fontsize)
-
 
     axs[0].tick_params(labelsize=label_fontsize)
     axs[1].tick_params(labelsize=label_fontsize)
@@ -350,7 +351,7 @@ def plot_graph_from_databases(database_filepaths, config):
         continue
       con = sqlite3.connect(database_filepath)
       cursor = con.cursor()
-      get_json_from_database(cursor, data, config['verbosity'], config['ignore_non_optimal_planner'])
+      get_json_from_database(cursor, data, config)
       experiment_names.append(get_experiment_names_from_database(cursor))
 
     experiment_names = [item for sublist in experiment_names for item in sublist]
