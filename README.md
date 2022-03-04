@@ -73,3 +73,5 @@ amazing work on [asymptotically-optimal motion planning](https://robotic-esp.com
 [@frangrothe](https://github.com/frangrothe): This library is also based upon earlier work by [Francesco Grothe](https://github.com/frangrothe),
 who used optimality graphs extensively for his cool work on time-based motion
 planning (Check it out here: https://github.com/frangrothe/bt-motion-planning).
+
+[@servetb](https://github.com/servetb) and [@JayKamat99](https://github.com/JayKamat99): For feedback on earlier versions, and advice on improvements.
