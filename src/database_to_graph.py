@@ -87,7 +87,6 @@ def get_json_from_database(cur, data, config):
 
   planners = cur.execute("SELECT id, name FROM {}".format('plannerConfigs')).fetchall()
   if ignore_non_optimal_planner:
-    print("Removing non-optimal planner")
     planners = remove_non_optimal_planner(planners)
 
   for planner in planners:
@@ -153,20 +152,15 @@ def get_json_from_database(cur, data, config):
       data[planner_name]["point"] = point_data
 
 
-def get_start_index(medians, times, max_cost):
-    for i in range(len(times)):
-        if medians[i] < max_cost:
-            return i
-    return len(times)
-
 def get_best_cost_from_runs(cur, planner_id, ci_left, ci_right):
-    pair = np.array(cur.execute("SELECT time, solution_length FROM {0} WHERE plannerid={1} AND status=6".format('runs', planner_id)).fetchall())
-    if pair.size == 0:
-        return None
-    split = np.split(pair, 2, axis=1)
-    times = split[0]
-    costs = split[1]
-    return calculate_points(times, costs, ci_left, ci_right)
+    return None
+    # pair = np.array(cur.execute("SELECT time, solution_length FROM {0} WHERE plannerid={1} AND status=6".format('runs', planner_id)).fetchall())
+    # if pair.size == 0:
+    #     return None
+    # split = np.split(pair, 2, axis=1)
+    # times = split[0]
+    # costs = split[1]
+    # return calculate_points(times, costs, ci_left, ci_right)
 
 def calculate_points(times, costs, ci_left, ci_right):
     if None in costs: 
@@ -224,8 +218,10 @@ def plot_optimization(ax, data, config):
     max_time = data["info"]["max_time"]["optimization"]
     resolution = data["info"]["resolution"]
     times = np.logspace(np.log10(min_time), np.log10(max_time), resolution)
-    max_cost = data["info"]["max_cost"]
-    min_cost = data["info"]["min_cost"]
+
+    max_cost = get_maxcost_from_json_or_config(data, config, times)
+    min_cost = get_mincost_from_json_or_config(data, config, times, max_cost)
+
     fontsize = data["info"]["fontsize"]
 
     ax.set_xscale('log')
@@ -266,6 +262,7 @@ def json_to_graph(json_filepath, pdf_filepath, config):
         data = json.load(jsonfile)
 
     fig, axs = plt.subplots(2, 1, sharex='col', figsize=(16,10))
+
     plot_success(axs[0], data)
     plot_optimization(axs[1], data, config)
 
@@ -329,18 +326,13 @@ def plot_graph_from_databases(database_filepaths, config):
       data["info"]['max_cost'] = config['max_cost']
     if config['min_cost'] > 0:
       data["info"]['min_cost'] = config['min_cost']
-    if config['max_time'] > 0:
-      data["info"]['max_time']['success'] = config['max_time']
-      data["info"]['max_time']['optimization'] = config['max_time']
-    if config['min_time'] > 0:
-      data["info"]['min_time']['success'] = config['min_time']
-      data["info"]['min_time']['optimization'] = config['min_time']
     if config['fontsize'] > 0:
       data["info"]['fontsize'] = config['fontsize']
     if config['label_fontsize'] > 0:
       data["info"]['label_fontsize'] = config['label_fontsize']
 
     experiment_names = []
+    experiment_times = []
     for database_filepath in database_filepaths:
       if not os.path.isfile(database_filepath):
         print("WARN: {} is not a file".format(database_filepath))
@@ -351,11 +343,17 @@ def plot_graph_from_databases(database_filepaths, config):
         continue
       con = sqlite3.connect(database_filepath)
       cursor = con.cursor()
+
+      get_maxtime_from_database_or_config(cursor, config, data)
+      get_mintime_from_database_or_config(cursor, config, data)
+
       get_json_from_database(cursor, data, config)
       experiment_names.append(get_experiment_names_from_database(cursor))
 
     experiment_names = [item for sublist in experiment_names for item in sublist]
     experiment_names = list(set(experiment_names))
+
+    data["info"]["experiment"] = get_experiment_name_from_array(experiment_names)
 
     ############################################################
     ### Verify that all experiment names match
@@ -375,6 +373,7 @@ def plot_graph_from_databases(database_filepaths, config):
 
     if len(experiment_names) > 0 :
       data["info"]["experiment"] = get_experiment_name_from_array(experiment_names)
+
     ############################################################
     ### Create json file from data structure
     ############################################################

@@ -107,6 +107,93 @@ def get_experiment_names_from_database(cursor):
       experiment_names.append("Experiment {} [ID {}]".format(experiment[1], experiment[0]))
   return experiment_names
 
+def get_maxtime_from_database(cursor):
+  times = cursor.execute("SELECT timelimit FROM {}".format('experiments')).fetchall()
+  times = np.array(times).flatten()
+  return times.max()
+
+def get_maxtime_from_database_or_config(cursor, config, data):
+  if config['max_time'] > 0:
+    time = config['max_time']
+  else:
+    time = get_maxtime_from_database(cursor)
+
+  data["info"]['max_time']['success'] = time
+  data["info"]['max_time']['optimization'] = time
+  return time
+
+def get_mintime_from_database_or_config(cursor, config, data):
+  kDefaultTimeDifferenceOrderOfMagnitude = 3
+  if config['min_time'] > 0:
+    time = config['min_time']
+  else:
+    maxtime = float(get_maxtime_from_database_or_config(cursor, config, data))
+    oom = int(np.floor(np.log10(maxtime)))
+    time = 10**(oom-kDefaultTimeDifferenceOrderOfMagnitude)
+
+  data["info"]['min_time']['success'] = time
+  data["info"]['min_time']['optimization'] = time
+  return time
+
+def get_start_index(medians, times, max_cost):
+    for i in range(len(times)):
+        if medians[i] < max_cost:
+            return i
+    return len(times)
+
+def get_maxcost_from_json_or_config(data, config, times):
+  kPercentagePaddingAboveMax = 0.1
+  max_cost_in_data_acquisition = data["info"]["max_cost"]
+  max_cost = 0
+  if config['max_cost'] > 0:
+    max_cost = config['max_cost']
+  else:
+    for planner in data:
+      if planner == "info":
+        continue
+      ycost = max_cost_in_data_acquisition
+      planner_optimization_success = data[planner]["optimization_success"]
+      if planner_optimization_success:
+        planner_median = data[planner]["median"]
+        start = get_start_index(planner_median, times, max_cost_in_data_acquisition)
+        cost_below_max = planner_median[start:]
+        if len(cost_below_max) > 0:
+          ycost = np.array(cost_below_max).max()
+      else:
+        planner_point = data[planner]["point"]
+        ycost = planner_point["cost"][0]
+      if ycost > max_cost:
+        if ycost < max_cost_in_data_acquisition:
+          max_cost = ycost
+    max_cost = max_cost + kPercentagePaddingAboveMax*max_cost
+
+  data["info"]["max_cost"] = max_cost
+  return max_cost
+
+def get_mincost_from_json_or_config(data, config, times, max_cost):
+  kPercentagePaddingBelowMin = 0.1
+  min_cost = max_cost
+  if config['min_cost'] > 0:
+    min_cost = config['min_cost']
+  else:
+    for planner in data:
+      if planner == "info":
+        continue
+      planner_optimization_success = data[planner]["optimization_success"]
+      if planner_optimization_success:
+        planner_median = data[planner]["median"]
+        ycost = np.array(planner_median).min()
+      else:
+        planner_point = data[planner]["point"]
+        ycost = planner_point["cost"][0]
+      if ycost < min_cost:
+        min_cost = ycost
+
+  dc = max_cost - min_cost
+  min_cost = np.maximum(0.0, min_cost - kPercentagePaddingBelowMin*dc)
+  data["info"]["min_cost"] = min_cost
+  return min_cost
+
 def get_experiment_name_from_array(experiment_names):
   if len(experiment_names) < 1:
     return "unknown"
@@ -205,7 +292,9 @@ def get_filename_from_database_filepaths_and_name(filepaths, name):
     return "unknown"
   filepath = filepaths[0]
   directory = os.path.dirname(filepath)
-  filename = directory + "/" + name
+  if len(directory) > 0:
+    directory += "/"
+  filename = directory + name
   return filename
 
 def get_filename_from_database_filepaths(filepaths):
@@ -213,16 +302,23 @@ def get_filename_from_database_filepaths(filepaths):
     return "unknown"
   filepath = filepaths[0]
   directory = os.path.dirname(filepath)
-  filename_without_extension =  directory + "/" + "runtime_table"
+  filename = os.path.splitext(os.path.basename(filepath))[0]
+  if len(directory) > 0:
+    directory += "/"
+
+  filename_without_extension =  directory + filename
   return filename_without_extension
 
 def create_filename_with_extension(filename_without_extension, extension):
   i = 0
-  path_exist = True
-  while path_exist:
-    filename = filename_without_extension + ("%s%s"%(i,extension))
-    path_exist = os.path.exists(filename)
-    i += 1
+  filename = filename_without_extension + ("%s"%(extension))
+  path_exist = os.path.exists(filename)
+  if path_exist:
+    print("Warning: overwriting file %s."%(filename))
+  # while path_exist:
+  #   filename = filename_without_extension + ("(%s)%s"%(i,extension))
+  #   path_exist = os.path.exists(filename)
+  #   i += 1
   return filename
 
 def get_pdf_from_database_filepaths(filepaths):
