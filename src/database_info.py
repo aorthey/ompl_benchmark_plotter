@@ -247,10 +247,16 @@ def get_planner_names_from_database(cursor):
       planner_names.append(planner[1])
   return planner_names
 
-def has_best_cost(cursor):
-  cursor.execute("SELECT * FROM {}".format('progress')).fetchall()
+def has_table_column(cursor, table_name, column_name):
+  cursor.execute("SELECT * FROM {}".format(table_name)).fetchall()
   names = list(map(lambda x: x[0], cursor.description))
-  return True if 'best_cost' in names else False
+  return True if column_name in names else False
+
+def has_solution_length(cursor):
+  return has_table_column(cursor, 'runs', 'solution_length')
+
+def has_best_cost(cursor):
+  return has_table_column(cursor, 'progress', 'best_cost')
 
 def get_run_results_from_database(cursor):
   planners = cursor.execute("SELECT id, name FROM {}".format('plannerConfigs')).fetchall()

@@ -151,16 +151,16 @@ def get_json_from_database(cur, data, config):
           point_data = max_point(max_time, max_cost)
       data[planner_name]["point"] = point_data
 
-
 def get_best_cost_from_runs(cur, planner_id, ci_left, ci_right):
-    return None
-    # pair = np.array(cur.execute("SELECT time, solution_length FROM {0} WHERE plannerid={1} AND status=6".format('runs', planner_id)).fetchall())
-    # if pair.size == 0:
-    #     return None
-    # split = np.split(pair, 2, axis=1)
-    # times = split[0]
-    # costs = split[1]
-    # return calculate_points(times, costs, ci_left, ci_right)
+    if not has_solution_length(cur):
+      return None
+    pair = np.array(cur.execute("SELECT time, solution_length FROM {0} WHERE plannerid={1} AND status=6".format('runs', planner_id)).fetchall())
+    if pair.size == 0:
+        return None
+    split = np.split(pair, 2, axis=1)
+    times = split[0]
+    costs = split[1]
+    return calculate_points(times, costs, ci_left, ci_right)
 
 def calculate_points(times, costs, ci_left, ci_right):
     if None in costs: 
