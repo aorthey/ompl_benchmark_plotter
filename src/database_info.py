@@ -257,7 +257,6 @@ def has_solution_length(cursor):
 def has_best_cost(cursor):
   return has_table_column(cursor, 'progress', 'best_cost')
 
-
 def get_filename_from_database_filepaths_and_name(filepaths, name):
   if len(filepaths) <= 0:
     return "unknown"
@@ -369,7 +368,7 @@ def load_config():
     return info
 
 def get_average_runtime_from_database(cur, data):
-  print("NYI")
+  raise Exception("NYI")
 
 ############################################################
 ### Print All Runs

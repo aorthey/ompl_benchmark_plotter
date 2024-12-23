@@ -50,18 +50,7 @@ def get_json_from_database(cur, data, config):
   ignore_non_optimal_planner = config["ignore_non_optimal_planner"]
 
   if verbosity > 1:
-    print(80*"-")
-    print("-- Tables in database file")
-    print(80*"-")
-    print(get_tables_from_database(cur))
-    print(80*"-")
-    print("-- Planner in database")
-    print(80*"-")
-    print(get_planner_names_from_database(cur))
-    print(80*"-")
-    print("-- Experiments in database")
-    print(80*"-")
-    print(get_experiment_names_from_database(cur))
+    print_metadata_from_database(cur)
 
   if verbosity > 2:
     print_run_results_from_database(cur)
@@ -78,10 +67,6 @@ def get_json_from_database(cur, data, config):
   ############################################################
   ### Print Average Success per Planner over Time
   ############################################################
-  if verbosity > 1:
-    print(80*"-")
-    print("-- Runs per planner ")
-    print(80*"-")
 
   times = create_time_space(data)
 
@@ -130,8 +115,9 @@ def get_json_from_database(cur, data, config):
         data[planner_name]["quantile5"] = results[2].tolist()
         data[planner_name]["quantile95"] = results[3].tolist()
         success = get_count_success(cur, len(runs), runids, times)
-        print("Planner {} success {} (runs {})".format(planner_name, success.tolist(), len(runs)))
-        print("Planner {} median {} (runs {})".format(planner_name, results[1].tolist(), len(runs)))
+        if verbosity > 0:
+          print("Planner {} success {} (runs {})".format(planner_name, success.tolist(), len(runs)))
+          print("Planner {} median {} (runs {})".format(planner_name, results[1].tolist(), len(runs)))
         data[planner_name]["success"] = success.tolist()
       else:
         point_data = get_best_cost_from_runs(cur, planner_id, ci_left, ci_right)
@@ -359,17 +345,11 @@ def plot_graph_from_databases(database_filepaths, config):
     ### Verify that all experiment names match
     ############################################################
 
-    if len(experiment_names) > 1:
-      print(80*'#')
-      print("WARN: Mismatching experiment names in database: {}".format(experiment_names))
-      print("EXPECTED: Same name. Proceed with caution.".format(experiment_names))
-      print(80*'#')
-
     if len(experiment_names) < 1 :
-      print(80*'#')
-      print("ERROR: Could not load experiments.")
-      print(80*'#')
-      sys.exit(1)
+      raise Exception("Could not load experiments.")
+
+    if len(experiment_names) > 1:
+      raise Exception("Mismatching experiment names in database: {}".format(experiment_names))
 
     if len(experiment_names) > 0 :
       data["info"]["experiment"] = get_experiment_name_from_array(experiment_names)
@@ -392,17 +372,3 @@ def plot_graph_from_databases(database_filepaths, config):
       pdf_filepath = change_filename_extension(json_filepath, '.pdf')
 
     json_to_graph(json_filepath, pdf_filepath, config)
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Plotting of Benchmark Files (especially for asymptotically-optimal planner).')
-    parser.add_argument('database_file', type=str, nargs='?', help='Database (.db) file')
-    args = parser.parse_args()
-
-    fname = args.database_file
-    if fname is None:
-      fname="data/example.db"
-
-    if os.path.isfile(fname):
-      plot_graph_from_database(fname)
-    else:
-      print("Error: {} is not a file.".format(fname))

@@ -35,6 +35,30 @@ def test_load_default_config():
   assert data["min_cost"] <= data["max_cost"]
   assert data.get("final_cost") is None
 
+def test_raise_exception_on_non_existing_file():
+  with pytest.raises(Exception):
+    run_benchmark_plotter(["tests/data/UnKnOwN.db", "-q"])
+
+def test_raise_exception_on_non_database_file():
+  non_db_file = "tests/data/UnKnOwN.txt"
+  assert not os.path.isfile(non_db_file)
+  file = open(non_db_file, "w+")
+  assert os.path.isfile(non_db_file)
+  with pytest.raises(Exception):
+    run_benchmark_plotter([non_db_file, "-q"])
+  os.remove(non_db_file)
+  assert not os.path.isfile(non_db_file)
+
+def test_raise_exception_on_empty_database_file():
+  non_db_file = "tests/data/UnKnOwN.db"
+  assert not os.path.isfile(non_db_file)
+  file = open(non_db_file, "w+")
+  assert os.path.isfile(non_db_file)
+  with pytest.raises(Exception):
+    run_benchmark_plotter([non_db_file, "-q"])
+  os.remove(non_db_file)
+  assert not os.path.isfile(non_db_file)
+
 def test_verify_graph_plotting_from_simple_database():
   pdffile = "tests/data/simple.pdf"
   assert not os.path.isfile(pdffile)
@@ -50,9 +74,4 @@ def test_verify_graph_plotting_from_example_database():
   assert os.path.isfile(pdffile)
   os.remove(pdffile)
   assert not os.path.isfile(pdffile)
-
-def test_invalid_files():
-  with pytest.raises(Exception):
-    run_benchmark_plotter(["tests/data/UnKnOwN.db", "-q"])
-
 
