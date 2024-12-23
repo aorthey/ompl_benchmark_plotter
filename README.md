@@ -1,17 +1,17 @@
 # ompl_benchmark_plotter
 
-This is an easy-to-use script to quickly generate optimality graphs (as pdf) from benchmark database file(s) generated in the [Open Motion Planning Library (OMPL)](https://github.com/ompl/ompl).
+This is an easy-to-use script to quickly generate cost-success graphs (as pdf) from benchmark database file(s) generated in the [Open Motion Planning Library (OMPL)](https://github.com/ompl/ompl).
 
-## Generating optimality graphs
+## Generating cost-success graphs
 
 Input: Any number of database files. 
 ```
   ./ompl_benchmark_plotter.py examples/example.db -s
 ```
 
-![Optimality Graph](examples/example.png)
+![Cost-success Graph](examples/example.png)
 
-### Options
+### General Options
 
 * **-o**, **--output-file** _PDF-FILENAME_
   Specify output pdf filename 
@@ -22,7 +22,7 @@ Input: Any number of database files.
 * **--quiet**
   Do not show any output. Invalidates any verbose values.
 
-### Graph Options
+### Graph generation Options
 
 NOTE: default values can be found in ```config/default.json```
 
@@ -49,6 +49,11 @@ NOTE: default values can be found in ```config/default.json```
 * **--legend-none**
   Do not print legend.
 
+### Run unit tests
+```
+  pytest
+```
+
 # Acknowledgements
 
 [@gammell](https://github.com/gammell): This repository has been created as a tool to easily generate graphs similar to the
@@ -56,7 +61,7 @@ ones which [Jonathan Gammell](https://robotic-esp.com/people/gammell/) has used 
 work on [asymptotically-optimal motion planning](https://robotic-esp.com/code/bitstar/).)
 
 [@frangrothe](https://github.com/frangrothe): This library is also based upon earlier work by [Francesco Grothe](https://github.com/frangrothe),
-who used optimality graphs extensively for his work on time-based motion
+who used cost-success graphs extensively for his work on time-based motion
 planning (Check it out here: https://github.com/frangrothe/bt-motion-planning).
 
 [@servetb](https://github.com/servetb) and [@JayKamat99](https://github.com/JayKamat99): For feedback on earlier versions, and advice on improvements.

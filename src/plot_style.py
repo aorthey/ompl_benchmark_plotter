@@ -1,4 +1,3 @@
-
 def get_marker_style(data, planner_name):
   return data["info"]["markerstyle"]
 

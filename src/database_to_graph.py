@@ -64,7 +64,7 @@ def get_json_from_database(cur, data, config):
     print(get_experiment_names_from_database(cur))
 
   if verbosity > 2:
-    get_run_results_from_database(cur)
+    print_run_results_from_database(cur)
 
   ############################################################
   ### Verify that all experiment names match
@@ -335,12 +335,12 @@ def plot_graph_from_databases(database_filepaths, config):
     experiment_times = []
     for database_filepath in database_filepaths:
       if not os.path.isfile(database_filepath):
-        print("WARN: {} is not a file".format(database_filepath))
-        continue
+        raise Exception("{} is not an existing file.".format(database_filepath))
+
       extension = os.path.splitext(database_filepath)[1]
       if not (extension == '.db'):
-        print("WARN: {} is not a db file".format(database_filepath))
-        continue
+        raise Exception("{} is not a .db file.".format(database_filepath))
+
       con = sqlite3.connect(database_filepath)
       cursor = con.cursor()
 

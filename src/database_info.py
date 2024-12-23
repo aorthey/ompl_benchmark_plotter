@@ -239,7 +239,6 @@ def get_longest_name_from_planners(names):
 def get_time_limit_for_experiment(cursor, experiment_id):
   return cursor.execute("SELECT timelimit FROM {} WHERE id={}".format('experiments',experiment_id)).fetchall()[0][0]
 
-
 def get_planner_names_from_database(cursor):
   planners = cursor.execute("SELECT id, name FROM {}".format('plannerConfigs')).fetchall()
   planner_names = []
@@ -257,40 +256,6 @@ def has_solution_length(cursor):
 
 def has_best_cost(cursor):
   return has_table_column(cursor, 'progress', 'best_cost')
-
-def get_run_results_from_database(cursor):
-  planners = cursor.execute("SELECT id, name FROM {}".format('plannerConfigs')).fetchall()
-  for planner in planners:
-    planner_id = planner[0]
-    getids = cursor.execute("SELECT id FROM {} WHERE plannerid={}".format('runs',planner_id)).fetchall()
-    runs = np.array(getids).flatten()
-    runids = ','.join(str(run) for run in runs)
-
-    exp_getids = cursor.execute("SELECT id FROM {}".format('experiments')).fetchall()
-    exps = np.array(exp_getids).flatten()
-    expids = ','.join(str(exp) for exp in exps)
-
-    print("Run ids {}".format(runids))
-    print("Exp ids {}".format(expids))
-
-    if has_best_cost(cursor):
-      data = np.array(cursor.execute("SELECT time, best_cost FROM {} WHERE runid in ({})".format('progress', runids)).fetchall()).flatten()
-      if len(data) > 0:
-        print("Planner {} with time {} and cost {}".format(planner[1], data[0], data[1]))
-    else:
-      data = np.array(cursor.execute("SELECT time FROM {} WHERE id in ({}) and \
-        experimentid in ({})".format('runs', runids, expids)).fetchall()).flatten()
-      print("Planner {} with time {}".format(planner[1], np.around(data)))
-
-  for planner in planners:
-    planner_id = planner[0]
-    getids = cursor.execute("SELECT id FROM {} WHERE plannerid={}".format('runs',planner_id)).fetchall()
-    runs = np.array(getids).flatten()
-    runids = ','.join(str(run) for run in runs)
-    if has_best_cost(cursor):
-      data = np.array(cursor.execute("SELECT time, best_cost FROM {} WHERE runid in ({})".format('progress', runids)).fetchall()).flatten()
-      if len(data) > 0:
-        print("Planner {} with time {} and cost {}".format(planner[1], data[0], data[1]))
 
 
 def get_filename_from_database_filepaths_and_name(filepaths, name):
@@ -321,19 +286,11 @@ def create_filename_with_extension(filename_without_extension, extension):
   path_exist = os.path.exists(filename)
   if path_exist:
     print("Warning: overwriting file %s."%(filename))
-  # while path_exist:
-  #   filename = filename_without_extension + ("(%s)%s"%(i,extension))
-  #   path_exist = os.path.exists(filename)
-  #   i += 1
   return filename
 
 def get_pdf_from_database_filepaths(filepaths):
   filename_without_extension = get_filename_from_database_filepaths(filepaths)
   return create_filename_with_extension(filename_without_extension, ".pdf")
-
-def get_tex_from_database_filepaths(filepaths):
-  filename_without_extension = get_filename_from_database_filepaths(filepaths)
-  return create_filename_with_extension(filename_without_extension, ".tex")
 
 def get_cell_entry(data, experiment, planner, config):
   hide_variance = config['hide_variance']
@@ -365,24 +322,11 @@ def change_filename_extension(filepath, extension):
   filepath_without_extension = os.path.splitext(filepath)[0]
   return filepath_without_extension + extension
 
-def print_metadata_from_database(cur):
-  print(80*"-")
-  print("-- Tables in database file")
-  print(80*"-")
-  print(get_tables_from_database(cur))
-  print(80*"-")
-  print("-- Planner in database")
-  print(80*"-")
-  print(get_planner_names_from_database(cur))
-  print(80*"-")
-  print("-- Experiments in database")
-  print(80*"-")
-  print(get_experiment_names_from_database(cur))
-
 def create_time_space(data):
   return np.logspace(np.log10(data["info"]["min_time"]["success"]), \
       np.log10(data["info"]["max_time"]["success"]), \
                       data["info"]["resolution"])
+
 def create_time_space_linear(data):
   return np.linspace(0, data["info"]["timelimit"], \
                       data["info"]["resolution_linear"])
@@ -437,3 +381,77 @@ def get_average_runtime_from_database(cur, data):
 # runs = cur.execute("SELECT id, experimentid, plannerid, correct_solution, time, best_cost FROM {}".format('runs')).fetchall()
 # for run in runs:
 #   print("Run {} on environment {} with planner {}. Correct solution:{}. Time {}".format(run[0], run[1], run[2], run[3], run[4]))
+
+def print_run_results_from_database(cursor):
+  planners = cursor.execute("SELECT id, name FROM {}".format('plannerConfigs')).fetchall()
+  for planner in planners:
+    planner_id = planner[0]
+    getids = cursor.execute("SELECT id FROM {} WHERE plannerid={}".format('runs',planner_id)).fetchall()
+    runs = np.array(getids).flatten()
+    runids = ','.join(str(run) for run in runs)
+
+    exp_getids = cursor.execute("SELECT id FROM {}".format('experiments')).fetchall()
+    exps = np.array(exp_getids).flatten()
+    expids = ','.join(str(exp) for exp in exps)
+
+    print("Run ids {}".format(runids))
+    print("Exp ids {}".format(expids))
+
+    if has_best_cost(cursor):
+      data = np.array(cursor.execute("SELECT time, best_cost FROM {} WHERE runid in ({})".format('progress', runids)).fetchall()).flatten()
+      if len(data) > 0:
+        print("Planner {} with time {} and cost {}".format(planner[1], data[0], data[1]))
+    else:
+      data = np.array(cursor.execute("SELECT time FROM {} WHERE id in ({}) and \
+        experimentid in ({})".format('runs', runids, expids)).fetchall()).flatten()
+      print("Planner {} with time {}".format(planner[1], np.around(data)))
+
+  for planner in planners:
+    planner_id = planner[0]
+    getids = cursor.execute("SELECT id FROM {} WHERE plannerid={}".format('runs',planner_id)).fetchall()
+    runs = np.array(getids).flatten()
+    runids = ','.join(str(run) for run in runs)
+    if has_best_cost(cursor):
+      data = np.array(cursor.execute("SELECT time, best_cost FROM {} WHERE runid in ({})".format('progress', runids)).fetchall()).flatten()
+      if len(data) > 0:
+        print("Planner {} with time {} and cost {}".format(planner[1], data[0], data[1]))
+
+def print_metadata_from_database(cur):
+  print(80*"-")
+  print("-- Tables in database file")
+  print(80*"-")
+  print(get_tables_from_database(cur))
+  print(80*"-")
+  print("-- Planner in database")
+  print(80*"-")
+  print(get_planner_names_from_database(cur))
+  print(80*"-")
+  print("-- Experiments in database")
+  print(80*"-")
+  print(get_experiment_names_from_database(cur))
+
+def make_config(args):
+  max_cost = args.max_cost if args.max_cost else -1
+  min_cost = args.min_cost if args.min_cost else -1
+  max_time = args.max_time if args.max_time else -1
+  min_time = args.min_time if args.min_time else -1
+  fontsize = args.fontsize if args.fontsize else -1
+  label_fontsize = args.label_fontsize if args.label_fontsize else -1
+  plot_config = {
+      'show': args.show,
+      'output_file': args.output_file,
+      'verbosity': args.verbose,
+      'max_cost': max_cost,
+      'min_cost': min_cost,
+      'max_time': max_time,
+      'min_time': min_time,
+      'fontsize': fontsize,
+      'label_fontsize': label_fontsize,
+      'ignore_non_optimal_planner': args.ignore_non_optimal_planner,
+      'legend_below_figure': args.legend_below_figure,
+      'legend_separate_file': args.legend_separate_file,
+      'legend_none': args.legend_none
+  }
+  if args.title_name:
+    plot_config['title_name'] = args.title_name
+  return plot_config
