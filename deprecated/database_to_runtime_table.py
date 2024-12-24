@@ -12,6 +12,28 @@ import json
 from src.plot_style import *
 from src.database_info import *
 
+def get_cell_entry(data, experiment, planner, config):
+  hide_variance = config['hide_variance']
+  decimals = int(config['decimals'])
+  time = data['experiments'][experiment][planner]['time_mean']
+  timelimit = data['experiments'][experiment][planner]['time_limit']
+  if time > timelimit:
+    time = timelimit
+
+  var = data['experiments'][experiment][planner]['time_variance']
+  best = data['experiments'][experiment][planner]['best_planner']
+  number_runs = data['experiments'][experiment][planner]['number_runs']
+
+  cell_entry = "$"
+  if best:
+    cell_entry += "\\textbf{%.*f}"%(decimals, time)
+  else:
+    cell_entry += "%.*f"%(decimals, time)
+  if not hide_variance:
+    cell_entry += "\\color{gray}{\\pm %.*f}"%(decimals, var)
+  cell_entry += "$"
+  return cell_entry
+
 def tex_table_from_json_data(database_filepaths, data, config):
 
     if config['output_file']:

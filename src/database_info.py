@@ -291,28 +291,6 @@ def get_pdf_from_database_filepaths(filepaths):
   filename_without_extension = get_filename_from_database_filepaths(filepaths)
   return create_filename_with_extension(filename_without_extension, ".pdf")
 
-def get_cell_entry(data, experiment, planner, config):
-  hide_variance = config['hide_variance']
-  decimals = int(config['decimals'])
-  time = data['experiments'][experiment][planner]['time_mean']
-  timelimit = data['experiments'][experiment][planner]['time_limit']
-  if time > timelimit:
-    time = timelimit
-
-  var = data['experiments'][experiment][planner]['time_variance']
-  best = data['experiments'][experiment][planner]['best_planner']
-  number_runs = data['experiments'][experiment][planner]['number_runs']
-
-  cell_entry = "$"
-  if best:
-    cell_entry += "\\textbf{%.*f}"%(decimals, time)
-  else:
-    cell_entry += "%.*f"%(decimals, time)
-  if not hide_variance:
-    cell_entry += "\\color{gray}{\\pm %.*f}"%(decimals, var)
-  cell_entry += "$"
-  return cell_entry
-
 def get_json_filepath_from_databases(filepaths): 
   filename_without_extension = get_filename_from_database_filepaths(filepaths)
   return create_filename_with_extension(filename_without_extension, ".json")
@@ -358,7 +336,6 @@ def get_count_success(cur, run_count, runids, times):
             success[i] = (sum_not_none / run_count ) * 100.0
 
     return success
-
 
 def load_config():
     cwd = Path(__file__).parent.absolute()

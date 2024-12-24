@@ -1,4 +1,3 @@
-#!/usr/bin/python3
 import sys
 import json
 import os
@@ -19,9 +18,11 @@ fe = font_manager.FontEntry(
     name='cmr10')
 font_manager.fontManager.ttflist.insert(0, fe)
 plt.rcParams['font.family'] = fe.name
+plt.rcParams['axes.formatter.use_mathtext'] = True
 plt.rcParams['mathtext.fontset']='cm'
 matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
+
 
 def get_cost_results(cur, runids, times, max_cost, ci_left, ci_right):
     medians = np.zeros(len(times))
@@ -67,7 +68,6 @@ def get_json_from_database(cur, data, config):
   ############################################################
   ### Print Average Success per Planner over Time
   ############################################################
-
   times = create_time_space(data)
 
   planners = cur.execute("SELECT id, name FROM {}".format('plannerConfigs')).fetchall()
