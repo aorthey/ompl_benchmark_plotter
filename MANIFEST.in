@@ -1,0 +1,6 @@
+include README.md
+include config/default.json *
+include config/cmr10.ttf *
+recursive-include tests/data/
+
+
