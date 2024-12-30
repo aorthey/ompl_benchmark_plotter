@@ -2,14 +2,21 @@
 
 This is an easy-to-use script to quickly generate cost-success graphs (as pdf) from benchmark database file(s) generated in the [Open Motion Planning Library (OMPL)](https://github.com/ompl/ompl).
 
-## Generating cost-success graphs
+## Quick start
 
-Input: Any number of database files. 
+To produce a cost-success graph from a database file, simply run the following command:
 ```
   ./ompl_benchmark_plotter.py examples/example.db -s
 ```
 
 ![Cost-success Graph](examples/example.png)
+
+### Input
+
+There are two options to use the script:
+
+* Single database file: As input, you can specify one database (.db) files. 
+* Multiple database files: If more than one database file is specified, the script will generate a single graph by merging the database files. This allows you to compare different planners for the same experiment, which are stored in different database files. If you want to compare different experiments, you can simply run the script multiple times with different database files.
 
 ### General Options
 

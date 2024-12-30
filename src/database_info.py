@@ -5,51 +5,42 @@ import numpy as np
 import sqlite3
 from itertools import repeat
 from pathlib import Path
-from src.plot_style import *
+from src.get_plot_style import *
 
-def is_planner_optimal(planner):
-  name = get_label(planner)
-  if name == "RRT":
-    return False
-  elif name == "RRTConnect":
-    return False
-  elif name == "PRM":
-    return False
-  elif name == "EST":
-    return False
-  elif name == "BiEST":
-    return False
-  elif name == "RLRT":
-    return False
-  elif name == "BiRLRT":
-    return False
-  elif name == "TRRT":
-    return False
-  elif name == "BiTRRT":
-    return False
-  elif name == "FMT":
-    return False
-  elif name == "BFMT":
-    return False
-  elif name == "KPIECE1":
-    return False
-  elif name == "BKPIECE1":
-    return False
-  elif name == "ProjEST":
-    return False
-  elif name == "PDST":
-    return False
-  elif name == "STRIDE":
-    return False
-  elif name == "SBL":
-    return False
-  elif name == "SORRT*":
-    return False
-  else:
-    return True
+def get_cost_results(cursor, runids, times, max_cost, ci_left, ci_right):
+    medians = np.zeros(len(times))
+    quantile5 = np.zeros(len(times))
+    quantile95 = np.zeros(len(times))
 
-def remove_non_optimal_planner(planners):
-  return [x for x in planners if is_planner_optimal(x[1])]
+    improvement = False
+    for i in range(len(times)):
+        data = np.array(cursor.execute("SELECT a.best_cost FROM (SELECT MAX(time), \
+          best_cost FROM {0} WHERE time<={1} AND runid in ({2}) GROUP BY runid) a".format('progress', times[i], runids)).fetchall()).flatten()
+        if data.size == 0:
+            medians[i] = max_cost
+            quantile5[i] = max_cost
+            quantile95[i] = max_cost
+        else:
+            data = np.where(data == None, max_cost, data)
+            medians[i] = np.median(data)
+            quantile5[i] = np.percentile(data, ci_left, interpolation='nearest')
+            quantile95[i] = np.percentile(data, ci_right, interpolation='nearest')
+            improvement = True
+
+    return [improvement, medians, quantile5, quantile95]
+
+def is_planner_optimal(cursor, planner_id):
+  getids = cursor.execute("SELECT id FROM {} WHERE plannerid={}".format('runs', planner_id)).fetchone()
+  runid = getids[0]
+  data = cursor.execute("SELECT time, best_cost FROM {} WHERE runid in ({})".format('progress', runid)).fetchall()
+  if data is None:
+    return False
+  return len(data) > 10
+
+def remove_non_optimal_planner(cursor, planners):
+  if not has_best_cost(cursor):
+    return []
+  return [x for x in planners if is_planner_optimal(cursor, x[0])]
 
 def get_tables_from_database(cursor):
   tables = cursor.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").fetchall()
@@ -148,19 +139,18 @@ def get_maxcost_from_json_or_config(data, config, times):
   if config['max_cost'] > 0:
     max_cost = config['max_cost']
   else:
-    for planner in data:
-      if planner == "info":
-        continue
+    planner_data = data["planners"]
+    for planner in planner_data:
       ycost = max_cost_in_data_acquisition
-      planner_optimization_success = data[planner]["optimization_success"]
+      planner_optimization_success = planner_data[planner]["optimization_success"]
       if planner_optimization_success:
-        planner_median = data[planner]["median"]
+        planner_median = planner_data[planner]["median"]
         start = get_start_index(planner_median, times, max_cost_in_data_acquisition)
         cost_below_max = planner_median[start:]
         if len(cost_below_max) > 0:
           ycost = np.array(cost_below_max).max()
       else:
-        planner_point = data[planner]["point"]
+        planner_point = planner_data[planner]["point"]
         ycost = planner_point["cost"][0]
       if ycost > max_cost:
         if ycost < max_cost_in_data_acquisition:
@@ -176,15 +166,14 @@ def get_mincost_from_json_or_config(data, config, times, max_cost):
   if config['min_cost'] > 0:
     min_cost = config['min_cost']
   else:
-    for planner in data:
-      if planner == "info":
-        continue
-      planner_optimization_success = data[planner]["optimization_success"]
+    planner_data = data["planners"]
+    for planner in planner_data:
+      planner_optimization_success = planner_data[planner]["optimization_success"]
       if planner_optimization_success:
-        planner_median = data[planner]["median"]
+        planner_median = planner_data[planner]["median"]
         ycost = np.array(planner_median).min()
       else:
-        planner_point = data[planner]["point"]
+        planner_point = planner_data[planner]["point"]
         ycost = planner_point["cost"][0]
       if ycost < min_cost:
         min_cost = ycost
@@ -323,11 +312,11 @@ def get_times_from_success_over_time(success, timespace):
   times = np.array(times)
   return times
 
-def get_count_success(cur, run_count, runids, times):
+def get_count_success(cursor, run_count, runids, times):
     success = np.zeros(len(times))
     for i in range(len(times)):
         ### Select from one time slice all best costs
-        data = np.array(cur.execute("SELECT a.best_cost FROM (SELECT MAX(time), \
+        data = np.array(cursor.execute("SELECT a.best_cost FROM (SELECT MAX(time), \
               best_cost FROM {0} WHERE time<={1} AND runid in ({2}) GROUP BY runid) a".format('progress', times[i], runids)).fetchall()).flatten()
         if data.size == 0:
             success[i] = 0
@@ -344,7 +333,7 @@ def load_config():
         info = json.load(jsonfile)
     return info
 
-def get_average_runtime_from_database(cur, data):
+def get_average_runtime_from_database(cursor, data):
   raise Exception("NYI")
 
 ############################################################
@@ -354,7 +343,7 @@ def get_average_runtime_from_database(cur, data):
 # print("-- Runs in database")
 # print(80*"-")
 
-# runs = cur.execute("SELECT id, experimentid, plannerid, correct_solution, time, best_cost FROM {}".format('runs')).fetchall()
+# runs = cursor.execute("SELECT id, experimentid, plannerid, correct_solution, time, best_cost FROM {}".format('runs')).fetchall()
 # for run in runs:
 #   print("Run {} on environment {} with planner {}. Correct solution:{}. Time {}".format(run[0], run[1], run[2], run[3], run[4]))
 
@@ -392,19 +381,19 @@ def print_run_results_from_database(cursor):
       if len(data) > 0:
         print("Planner {} with time {} and cost {}".format(planner[1], data[0], data[1]))
 
-def print_metadata_from_database(cur):
+def print_metadata_from_database(cursor):
   print(80*"-")
   print("-- Tables in database file")
   print(80*"-")
-  print(get_tables_from_database(cur))
+  print(get_tables_from_database(cursor))
   print(80*"-")
   print("-- Planner in database")
   print(80*"-")
-  print(get_planner_names_from_database(cur))
+  print(get_planner_names_from_database(cursor))
   print(80*"-")
   print("-- Experiments in database")
   print(80*"-")
-  print(get_experiment_names_from_database(cur))
+  print(get_experiment_names_from_database(cursor))
 
 def make_config(args):
   max_cost = args.max_cost if args.max_cost else -1

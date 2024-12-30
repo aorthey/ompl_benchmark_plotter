@@ -9,7 +9,8 @@ from matplotlib import font_manager, rcParams
 import argparse
 
 from src.database_info import *
-from src.plot_style import *
+from src.get_diverse_color import *
+from src.get_plot_style import *
 
 font_path = "config/cmr10.ttf"
 
@@ -23,68 +24,36 @@ plt.rcParams['mathtext.fontset']='cm'
 matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
 
-
-def get_cost_results(cur, runids, times, max_cost, ci_left, ci_right):
-    medians = np.zeros(len(times))
-    quantile5 = np.zeros(len(times))
-    quantile95 = np.zeros(len(times))
-
-    improvement = False
-    for i in range(len(times)):
-        data = np.array(cur.execute("SELECT a.best_cost FROM (SELECT MAX(time), \
-          best_cost FROM {0} WHERE time<={1} AND runid in ({2}) GROUP BY runid) a".format('progress', times[i], runids)).fetchall()).flatten()
-        if data.size == 0:
-            medians[i] = max_cost
-            quantile5[i] = max_cost
-            quantile95[i] = max_cost
-        else:
-            data = np.where(data == None, max_cost, data)
-            medians[i] = np.median(data)
-            quantile5[i] = np.percentile(data, ci_left, interpolation='nearest')
-            quantile95[i] = np.percentile(data, ci_right, interpolation='nearest')
-            improvement = True
-
-    return [improvement, medians, quantile5, quantile95]
-
-def get_json_from_database(cur, data, config):
+def get_json_from_database(cursor, data, config):
   verbosity = config["verbosity"]
   ignore_non_optimal_planner = config["ignore_non_optimal_planner"]
 
   if verbosity > 1:
-    print_metadata_from_database(cur)
+    print_metadata_from_database(cursor)
 
   if verbosity > 2:
-    print_run_results_from_database(cur)
-
-  ############################################################
-  ### Verify that all experiment names match
-  ############################################################
-  # if not assert_equivalent_experiment_names(cur):
-  #   print(get_experiment_names_from_database(cur))
-  #   print("Error: All experiment names in database have to match to plot \
-  #   optimality graph.")
-  #   sys.exit(0)
+    print_run_results_from_database(cursor)
 
   ############################################################
   ### Print Average Success per Planner over Time
   ############################################################
   times = create_time_space(data)
 
-  planners = cur.execute("SELECT id, name FROM {}".format('plannerConfigs')).fetchall()
+  planners = cursor.execute("SELECT id, name FROM {}".format('plannerConfigs')).fetchall()
   if ignore_non_optimal_planner:
     planners = remove_non_optimal_planner(planners)
 
   for planner in planners:
     planner_id = planner[0]
     planner_name = planner[1]
-    number_runs = cur.execute("SELECT COUNT(*) FROM {} WHERE plannerid={}".format('runs', planner_id)).fetchall()[0][0]
+    number_runs = cursor.execute("SELECT COUNT(*) FROM {} WHERE plannerid={}".format('runs', planner_id)).fetchall()[0][0]
 
     percentages = np.empty(len(times))
     for i in range(len(times)):
-        percentage = cur.execute(
+        percentage = cursor.execute(
             "SELECT COUNT(*) FROM {0} WHERE plannerid={2} AND time < {1}".format('runs', times[i], planner_id)).fetchall()
         percentages[i] = (percentage[0][0] / number_runs) * 100
-    data[planner_name] = {
+    data["planners"][planner_name] = {
         "success": percentages.tolist()
         }
     if verbosity > 1:
@@ -98,49 +67,49 @@ def get_json_from_database(cur, data, config):
   max_cost = data["info"]["max_cost"]
   ci_left = data["info"]["ci_left"]
   ci_right = data["info"]["ci_right"]
-  if has_best_cost(cur):
+  if has_best_cost(cursor):
     times = np.logspace(np.log10(min_time), np.log10(max_time), data["info"]["resolution"])
 
     for planner in planners:
       planner_id = planner[0]
       planner_name = planner[1]
-      getids = cur.execute("SELECT id FROM {} WHERE plannerid={}".format('runs',planner_id)).fetchall()
+      getids = cursor.execute("SELECT id FROM {} WHERE plannerid={}".format('runs',planner_id)).fetchall()
       runs = np.array(getids).flatten()
       runids = ','.join(str(run) for run in runs)
 
-      results = get_cost_results(cur, runids, times, max_cost, ci_left, ci_right)
-      data[planner_name]["optimization_success"] = results[0]
+      results = get_cost_results(cursor, runids, times, max_cost, ci_left, ci_right)
+      data["planners"][planner_name]["optimization_success"] = results[0]
       if results[0]:
-        data[planner_name]["median"] = results[1].tolist()
-        data[planner_name]["quantile5"] = results[2].tolist()
-        data[planner_name]["quantile95"] = results[3].tolist()
-        success = get_count_success(cur, len(runs), runids, times)
+        data["planners"][planner_name]["median"] = results[1].tolist()
+        data["planners"][planner_name]["quantile5"] = results[2].tolist()
+        data["planners"][planner_name]["quantile95"] = results[3].tolist()
+        success = get_count_success(cursor, len(runs), runids, times)
         if verbosity > 0:
           print("Planner {} success {} (runs {})".format(planner_name, success.tolist(), len(runs)))
           print("Planner {} median {} (runs {})".format(planner_name, results[1].tolist(), len(runs)))
-        data[planner_name]["success"] = success.tolist()
+        data["planners"][planner_name]["success"] = success.tolist()
       else:
-        point_data = get_best_cost_from_runs(cur, planner_id, ci_left, ci_right)
+        point_data = get_best_cost_from_runs(cursor, planner_id, ci_left, ci_right)
         if point_data is None:
             point_data = max_point(max_time, max_cost)
-        data[planner_name]["point"] = point_data
+        data["planners"][planner_name]["point"] = point_data
   else:
     if verbosity > 0:
       print("WARNING: No best_cost entry in database file. Using solution_length instead.")
     for planner in planners:
       planner_id = planner[0]
       planner_name = planner[1]
-      data[planner_name]["optimization_success"] = False
+      data["planners"][planner_name]["optimization_success"] = False
 
-      point_data = get_best_cost_from_runs(cur, planner_id, ci_left, ci_right)
+      point_data = get_best_cost_from_runs(cursor, planner_id, ci_left, ci_right)
       if point_data is None:
           point_data = max_point(max_time, max_cost)
-      data[planner_name]["point"] = point_data
+      data["planners"][planner_name]["point"] = point_data
 
-def get_best_cost_from_runs(cur, planner_id, ci_left, ci_right):
-    if not has_solution_length(cur):
+def get_best_cost_from_runs(cursor, planner_id, ci_left, ci_right):
+    if not has_solution_length(cursor):
       return None
-    pair = np.array(cur.execute("SELECT time, solution_length FROM {0} WHERE plannerid={1} AND status=6".format('runs', planner_id)).fetchall())
+    pair = np.array(cursor.execute("SELECT time, solution_length FROM {0} WHERE plannerid={1} AND status=6".format('runs', planner_id)).fetchall())
     if pair.size == 0:
         return None
     split = np.split(pair, 2, axis=1)
@@ -185,17 +154,17 @@ def plot_success(ax, data):
     ax.set_xlim(min_time, max_time)
     ax.set_ylim(0.0, 100.0)
 
-    for planner in data:
-      if planner == "info":
-        continue
-
-      success_over_time = data[planner]["success"]
-      ax.plot(times, success_over_time, color=get_color(data, planner),
+    planner_data = data["planners"]
+    for planner in planner_data:
+      #color=get_color(data, planner)
+      color = get_diverse_color(planner)
+      success_over_time = planner_data[planner]["success"]
+      ax.plot(times, success_over_time, color=color,
           linestyle=get_line_style(data, planner),
           linewidth=data["info"]["linewidth"], label=get_label(planner))
 
     ax.grid(True, which="both", ls='--')
-    ylabel = data['info']['ylabel_success']
+    ylabel = data["info"]["ylabel_success"]
     ax.set_ylabel(ylabel, fontsize=fontsize)
 
 def plot_optimization(ax, data, config):
@@ -215,31 +184,27 @@ def plot_optimization(ax, data, config):
     ax.set_xlim(min_time, max_time)
     ax.set_ylim(min_cost, max_cost)
 
-    for planner in data:
-      if planner == "info":
-        continue
-
-      planner_optimization_success = data[planner]["optimization_success"]
+    planner_data = data["planners"]
+    for planner in planner_data:
+      planner_optimization_success = planner_data[planner]["optimization_success"]
+      #color = get_color(data, planner)
+      color = get_diverse_color(planner)
       if planner_optimization_success:
-        planner_median = data[planner]["median"]
-        planner_q5 = data[planner]["quantile5"]
-        planner_q95 = data[planner]["quantile95"]
+        planner_median = planner_data[planner]["median"]
+        planner_q5 = planner_data[planner]["quantile5"]
+        planner_q95 = planner_data[planner]["quantile95"]
 
         start = get_start_index(planner_median, times, max_cost)
-        ax.plot(times[start:], planner_median[start:], color=get_color(data,
-          planner), linewidth=data["info"]["linewidth"], label=get_label(planner))
-        ax.fill_between(times[start:], planner_q5[start:], planner_q95[start:],
-            color=get_color(data, planner), alpha=data["info"]["alpha_percentile"])
+        ax.plot(times[start:], planner_median[start:], color=color, linewidth=data["info"]["linewidth"], label=get_label(planner))
+        ax.fill_between(times[start:], planner_q5[start:], planner_q95[start:], color=color, alpha=data["info"]["alpha_percentile"])
       else:
-        planner_point = data[planner]["point"]
+        planner_point = planner_data[planner]["point"]
         time_errors, cost_errors = get_errors(planner_point)
-        plt.errorbar(planner_point["time"][0], planner_point["cost"][0],
-            cost_errors, time_errors, c=get_color(data, planner),
-            marker=get_marker_style(data, planner), ms=10, lw=0.5)
+        plt.errorbar(planner_point["time"][0], planner_point["cost"][0], cost_errors, time_errors, c=color, marker=get_marker_style(data, planner), ms=10, lw=0.5)
 
     ax.grid(True, which="both", ls='--')
-    ylabel = data['info']['ylabel_optimization']
-    xlabel = data['info']['xlabel']
+    ylabel = data["info"]["ylabel_optimization"]
+    xlabel = data["info"]["xlabel"]
     ax.set_xlabel(xlabel, fontsize=fontsize)
     ax.set_ylabel(ylabel, fontsize=fontsize)
 
@@ -252,8 +217,8 @@ def json_to_graph(json_filepath, pdf_filepath, config):
     plot_success(axs[0], data)
     plot_optimization(axs[1], data, config)
 
-    fontsize = data['info']['fontsize']
-    label_fontsize = data['info']['label_fontsize']
+    fontsize = data["info"]["fontsize"]
+    label_fontsize = data["info"]["label_fontsize"]
     experiment_name = get_experiment_label(data["info"]["experiment"])
 
     if 'title_name' in config:
@@ -262,8 +227,8 @@ def json_to_graph(json_filepath, pdf_filepath, config):
       axs[0].set_title(experiment_name, fontsize=fontsize)
 
     legend_title_name = 'Planner'
-    if not config['legend_none']:
-      if config['legend_separate_file']:
+    if not config["legend_none"]:
+      if config["legend_separate_file"]:
         figl, axl = plt.subplots()
         label_params = axs[0].get_legend_handles_labels() 
         legend = axl.legend(*label_params, loc="center", frameon=True, ncol=4, fontsize=fontsize)
@@ -308,6 +273,7 @@ def plot_graph_from_databases(database_filepaths, config):
     ############################################################
     data = {}
     data["info"] = load_config()
+    data["planners"] = {}
     if config['max_cost'] > 0:
       data["info"]['max_cost'] = config['max_cost']
     if config['min_cost'] > 0:

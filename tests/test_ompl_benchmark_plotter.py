@@ -1,6 +1,7 @@
 import pytest
 from src.database_info import *
 from src.database_to_graph import *
+from src.get_diverse_color import *
 from ompl_benchmark_plotter import *
 import os.path
 
@@ -34,6 +35,42 @@ def test_load_default_config():
   assert data["min_cost"] >= 0.0
   assert data["min_cost"] <= data["max_cost"]
   assert data.get("final_cost") is None
+
+def test_get_diverse_colors():
+  c1 = get_diverse_color("first")
+  c2 = get_diverse_color("second")
+  c3 = get_diverse_color("third")
+  c4 = get_diverse_color("first")
+  c5 = get_diverse_color("second")
+  assert c1 == c4
+  assert c1 != c2
+  assert c1 != c3
+  assert c2 == c5
+  assert c2 != c4
+
+def test_remove_nonoptimal_planners():
+  database_filepath = "tests/data/example.db"
+  connection = sqlite3.connect(database_filepath)
+  assert connection is not None
+  cursor = connection.cursor()
+  assert cursor is not None
+
+  planners = cursor.execute("SELECT id, name, settings FROM {}".format('plannerConfigs')).fetchall()
+  assert len(planners) == 8
+  planners_optimal = remove_non_optimal_planner(cursor, planners)
+  assert len(planners_optimal) == 3
+
+def test_remove_nonoptimal_planners_simple():
+  database_filepath = "tests/data/simple.db"
+  connection = sqlite3.connect(database_filepath)
+  assert connection is not None
+  cursor = connection.cursor()
+  assert cursor is not None
+
+  planners = cursor.execute("SELECT id, name FROM {}".format('plannerConfigs')).fetchall()
+  assert len(planners) == 5
+  planners_optimal = remove_non_optimal_planner(cursor, planners)
+  assert len(planners_optimal) == 2
 
 def test_raise_exception_on_non_existing_file():
   with pytest.raises(Exception):
