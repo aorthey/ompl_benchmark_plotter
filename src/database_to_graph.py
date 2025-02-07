@@ -140,6 +140,12 @@ def get_errors(point):
                             [point["cost"][2] - point["cost"][0]]])
     return time_errors, cost_errors
 
+def init_planner_colors(data):
+  planner_data = data["planners"]
+  planners = list(planner_data.keys())
+  planners.sort()
+  for planner in planners:
+    color = get_diverse_color(planner)
 
 def plot_success(ax, data):
 
@@ -154,9 +160,10 @@ def plot_success(ax, data):
     ax.set_xlim(min_time, max_time)
     ax.set_ylim(0.0, 100.0)
 
+    init_planner_colors(data)
+
     planner_data = data["planners"]
     for planner in planner_data:
-      #color=get_color(data, planner)
       color = get_diverse_color(planner)
       success_over_time = planner_data[planner]["success"]
       ax.plot(times, success_over_time, color=color,
@@ -212,25 +219,31 @@ def json_to_graph(json_filepath, pdf_filepath, config):
     with open(json_filepath, 'r') as jsonfile:
         data = json.load(jsonfile)
 
-    fig, axs = plt.subplots(2, 1, sharex='col', figsize=(16,10))
-
-    plot_success(axs[0], data)
-    plot_optimization(axs[1], data, config)
+    if config["only_success_graph"]:
+      fig, axs = plt.subplots(1, 1, figsize=(16,10))
+      plot_success(axs, data)
+      ax_success = axs
+    else:
+      fig, axs = plt.subplots(2, 1, sharex='col', figsize=(16,10))
+      ax_success = axs[0]
+      ax_cost = axs[1]
+      plot_success(ax_success, data)
+      plot_optimization(ax_cost, data, config)
 
     fontsize = data["info"]["fontsize"]
     label_fontsize = data["info"]["label_fontsize"]
     experiment_name = get_experiment_label(data["info"]["experiment"])
 
     if 'title_name' in config:
-      axs[0].set_title(config['title_name'], fontsize=fontsize)
+      ax_success.set_title(config['title_name'], fontsize=fontsize)
     else:
-      axs[0].set_title(experiment_name, fontsize=fontsize)
+      ax_success.set_title(experiment_name, fontsize=fontsize)
 
     legend_title_name = 'Planner'
     if not config["legend_none"]:
       if config["legend_separate_file"]:
         figl, axl = plt.subplots()
-        label_params = axs[0].get_legend_handles_labels() 
+        label_params = ax_success.get_legend_handles_labels() 
         legend = axl.legend(*label_params, loc="center", frameon=True, ncol=4, fontsize=fontsize)
         for obj in legend.legendHandles:
           obj.set_linewidth(data["info"]["legend_linewidth"])
@@ -238,22 +251,15 @@ def json_to_graph(json_filepath, pdf_filepath, config):
         legend_filepath = change_filename_extension(json_filepath, '_legend.pdf')
         figl.savefig(legend_filepath, bbox_extra_artists=(legend,), bbox_inches='tight')
         plt.close(figl)
-
-      elif config['legend_below_figure']:
-        label_params = axs[0].get_legend_handles_labels() 
-        legend = axs[1].legend(*label_params, loc='upper center', bbox_to_anchor=(0.5, -0.3),
-                      fancybox=True, ncol=4, fontsize=fontsize)
-        for obj in legend.legendHandles:
-          obj.set_linewidth(data["info"]["legend_linewidth"])
-        plt.setp(legend.get_title(),fontsize=label_fontsize)
       else:
-        legend = axs[0].legend(loc='upper left', title=legend_title_name, fontsize=label_fontsize)
+        legend = ax_success.legend(loc='upper left', title=legend_title_name, fontsize=label_fontsize)
         for obj in legend.legendHandles:
           obj.set_linewidth(data["info"]["legend_linewidth"])
         plt.setp(legend.get_title(),fontsize=label_fontsize)
 
-    axs[0].tick_params(labelsize=label_fontsize)
-    axs[1].tick_params(labelsize=label_fontsize)
+    ax_success.tick_params(labelsize=label_fontsize)
+    if not config["only_success_graph"]:
+      ax_cost.tick_params(labelsize=label_fontsize)
 
     fig = plt.gcf()
     if config['legend_separate_file'] or config['legend_none']:
@@ -282,6 +288,8 @@ def plot_graph_from_databases(database_filepaths, config):
       data["info"]['fontsize'] = config['fontsize']
     if config['label_fontsize'] > 0:
       data["info"]['label_fontsize'] = config['label_fontsize']
+    if config['verbosity'] > 0:
+      data["info"]['verbosity'] = config['verbosity']
 
     experiment_names = []
     experiment_times = []

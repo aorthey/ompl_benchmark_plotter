@@ -48,6 +48,30 @@ def test_get_diverse_colors():
   assert c2 == c5
   assert c2 != c4
 
+def test_colors_are_consistent_for_same_planner_set():
+  json_filepath = "tests/data/simple.json"
+  with open(json_filepath, 'r') as jsonfile:
+    data = json.load(jsonfile)
+
+  init_planner_colors(data)
+
+  planner_data = data["planners"]
+  planner_names = list(planner_data.keys())
+
+  planner_to_color_unsorted = {}
+  for planner in planner_names:
+    planner_to_color_unsorted[planner] = get_diverse_color(planner)
+
+  planner_names.sort()
+
+  planner_to_color_sorted = {}
+  for planner in planner_names:
+    planner_to_color_sorted[planner] = get_diverse_color(planner)
+
+  for planner in planner_names:
+    print(planner, planner_to_color_sorted[planner], planner_to_color_unsorted[planner])
+    assert planner_to_color_sorted[planner] == planner_to_color_unsorted[planner]
+
 def test_remove_nonoptimal_planners():
   database_filepath = "tests/data/example.db"
   connection = sqlite3.connect(database_filepath)

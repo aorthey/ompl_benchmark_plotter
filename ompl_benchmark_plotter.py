@@ -24,6 +24,7 @@ def run_benchmark_plotter(input_arguments):
   graph_group.add_argument('--min-time', type=float, help='Specify lower bound on time display.')
   graph_group.add_argument('--fontsize', type=float, help='Fontsize of title and descriptions.')
   graph_group.add_argument('--label-fontsize', type=float, help='Fontsize of tick labels.')
+  graph_group.add_argument('--only-success-graph', action='store_const', const=True, help='Plot only the success graph.')
   graph_group.add_argument('--ignore-non-optimal-planner', action='store_const', const=True, help='Do not plot non-optimal planner.')
   graph_group.add_argument('--legend-separate-file', action='store_const', const=True, help='Print legend as separate file.')
   graph_group.add_argument('--legend-below-figure', action='store_const',
@@ -56,7 +57,6 @@ def run_benchmark_plotter(input_arguments):
   ############################################################
   if args.verbose > 0:
     print("Create optimality graphs for {} files.".format(len(args.database_files)))
-
 
   plot_config = make_config(args)
   plot_graph_from_databases(args.database_files, plot_config)

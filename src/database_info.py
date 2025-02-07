@@ -401,9 +401,11 @@ def make_config(args):
   max_time = args.max_time if args.max_time else -1
   min_time = args.min_time if args.min_time else -1
   fontsize = args.fontsize if args.fontsize else -1
+  only_success_graph = args.only_success_graph if args.only_success_graph else False
   label_fontsize = args.label_fontsize if args.label_fontsize else -1
   plot_config = {
       'show': args.show,
+      'only_success_graph': args.only_success_graph,
       'output_file': args.output_file,
       'verbosity': args.verbose,
       'max_cost': max_cost,
