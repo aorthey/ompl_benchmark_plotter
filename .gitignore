@@ -1,3 +1,4 @@
+#Ignore
 *.json
 *.pyc
 *.pdf
@@ -6,3 +7,6 @@
 *.log
 *.tex
 
+#Allow
+!tests/data/simple.json
+!tests/data/example.json
