@@ -22,16 +22,21 @@ def run_benchmark_plotter(input_arguments):
   graph_group.add_argument('--min-cost', type=float, help='Specify lower bound on cost display.')
   graph_group.add_argument('--max-time', type=float, help='Specify upper bound on time display.')
   graph_group.add_argument('--min-time', type=float, help='Specify lower bound on time display.')
+  graph_group.add_argument('--linewidth', type=float, help='Linewidth of the output.')
   graph_group.add_argument('--fontsize', type=float, help='Fontsize of title and descriptions.')
   graph_group.add_argument('--label-fontsize', type=float, help='Fontsize of tick labels.')
   graph_group.add_argument('--only-success-graph', action='store_const', const=True, help='Plot only the success graph.')
   graph_group.add_argument('--ignore-non-optimal-planner', action='store_const', const=True, help='Do not plot non-optimal planner.')
+  graph_group.add_argument('--ignore-planner', action='store', type=str, nargs='+', help='Exclude planners from graph (accepts multiple planner names)')
   graph_group.add_argument('--legend-separate-file', action='store_const', const=True, help='Print legend as separate file.')
   graph_group.add_argument('--legend-below-figure', action='store_const',
       const=True, help='Print legend below graph.')
   graph_group.add_argument('--legend-none', action='store_const',
       const=True, help='Do not print legend.')
+  graph_group.add_argument('--remove-ylabel', action='store_const',
+      const=True, help='Do not print label on y-axis.')
   graph_group.add_argument('--title-name', action='store', type=str, help='Set title name.')
+  graph_group.add_argument('--no-title', action='store_const', const=True, help='Do not set a title for this graph')
 
   args = parser.parse_args(input_arguments)
   if args.quiet:

@@ -43,6 +43,11 @@ def get_json_from_database(cursor, data, config):
   if ignore_non_optimal_planner:
     planners = remove_non_optimal_planner(planners)
 
+  ignore_planner = config["ignore_planner"]
+  if ignore_planner is not None:
+    planners = [planner for planner in planners if planner[1] not in ignore_planner]
+    print("New planner set: {}".format(planners))
+
   for planner in planners:
     planner_id = planner[0]
     planner_name = planner[1]
@@ -171,8 +176,9 @@ def plot_success(ax, data):
           linewidth=data["info"]["linewidth"], label=get_label(planner))
 
     ax.grid(True, which="both", ls='--')
-    ylabel = data["info"]["ylabel_success"]
-    ax.set_ylabel(ylabel, fontsize=fontsize)
+    if not data["info"]["remove_ylabel"]:
+      ylabel = data["info"]["ylabel_success"]
+      ax.set_ylabel(ylabel, fontsize=fontsize)
 
 def plot_optimization(ax, data, config):
 
@@ -194,7 +200,6 @@ def plot_optimization(ax, data, config):
     planner_data = data["planners"]
     for planner in planner_data:
       planner_optimization_success = planner_data[planner]["optimization_success"]
-      #color = get_color(data, planner)
       color = get_diverse_color(planner)
       if planner_optimization_success:
         planner_median = planner_data[planner]["median"]
@@ -213,7 +218,8 @@ def plot_optimization(ax, data, config):
     ylabel = data["info"]["ylabel_optimization"]
     xlabel = data["info"]["xlabel"]
     ax.set_xlabel(xlabel, fontsize=fontsize)
-    ax.set_ylabel(ylabel, fontsize=fontsize)
+    if not data["info"]["remove_ylabel"]:
+      ax.set_ylabel(ylabel, fontsize=fontsize)
 
 def json_to_graph(json_filepath, pdf_filepath, config):
     with open(json_filepath, 'r') as jsonfile:
@@ -234,10 +240,11 @@ def json_to_graph(json_filepath, pdf_filepath, config):
     label_fontsize = data["info"]["label_fontsize"]
     experiment_name = get_experiment_label(data["info"]["experiment"])
 
-    if 'title_name' in config:
-      ax_success.set_title(config['title_name'], fontsize=fontsize)
-    else:
-      ax_success.set_title(experiment_name, fontsize=fontsize)
+    if not config["no_title"]:
+      if 'title_name' in config:
+        ax_success.set_title(config['title_name'], fontsize=fontsize)
+      else:
+        ax_success.set_title(experiment_name, fontsize=fontsize)
 
     legend_title_name = 'Planner'
     if not config["legend_none"]:
@@ -257,7 +264,11 @@ def json_to_graph(json_filepath, pdf_filepath, config):
           obj.set_linewidth(data["info"]["legend_linewidth"])
         plt.setp(legend.get_title(),fontsize=label_fontsize)
 
+    ## Set ticks and label fontsizes
+    tick_padding = 0.3 * label_fontsize
     ax_success.tick_params(labelsize=label_fontsize)
+    ax_success.tick_params(axis='both', which='major', pad=tick_padding)
+
     if not config["only_success_graph"]:
       ax_cost.tick_params(labelsize=label_fontsize)
 
@@ -286,10 +297,16 @@ def plot_graph_from_databases(database_filepaths, config):
       data["info"]['min_cost'] = config['min_cost']
     if config['fontsize'] > 0:
       data["info"]['fontsize'] = config['fontsize']
+    if config['linewidth'] > 0:
+      data["info"]['linewidth'] = config['linewidth']
     if config['label_fontsize'] > 0:
       data["info"]['label_fontsize'] = config['label_fontsize']
     if config['verbosity'] > 0:
       data["info"]['verbosity'] = config['verbosity']
+    if config['remove_ylabel']:
+      data["info"]["remove_ylabel"] = True
+    else:
+      data["info"]["remove_ylabel"] = False
 
     experiment_names = []
     experiment_times = []

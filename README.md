@@ -33,6 +33,8 @@ There are two options to use the script:
 
 NOTE: default values can be found in ```config/default.json```
 
+* **--linewidth** _LINEWIDTH_ 
+  Set linewidth for the graph
 * **--max-cost** _MAX-COST_
   Specify upper bound on cost axis.
 * **--min-cost** _MIN-COST_
@@ -49,6 +51,8 @@ NOTE: default values can be found in ```config/default.json```
   Do not plot non-optimal planner.
 * **--title-name** _TITLE-NAME_ 
   Set title name
+* **--no-title**
+  Remove title name
 * **--legend-separate-file**
   Print legend as separate file.
 * **--legend-below-figure**

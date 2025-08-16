@@ -401,6 +401,9 @@ def make_config(args):
   max_time = args.max_time if args.max_time else -1
   min_time = args.min_time if args.min_time else -1
   fontsize = args.fontsize if args.fontsize else -1
+  linewidth = args.linewidth if args.linewidth else -1
+  no_title = args.no_title if args.no_title else False
+  remove_ylabel = args.remove_ylabel if args.remove_ylabel else False
   only_success_graph = args.only_success_graph if args.only_success_graph else False
   label_fontsize = args.label_fontsize if args.label_fontsize else -1
   plot_config = {
@@ -413,8 +416,12 @@ def make_config(args):
       'max_time': max_time,
       'min_time': min_time,
       'fontsize': fontsize,
+      'no_title': no_title,
+      'linewidth': linewidth,
+      'remove_ylabel': remove_ylabel,
       'label_fontsize': label_fontsize,
       'ignore_non_optimal_planner': args.ignore_non_optimal_planner,
+      'ignore_planner': args.ignore_planner,
       'legend_below_figure': args.legend_below_figure,
       'legend_separate_file': args.legend_separate_file,
       'legend_none': args.legend_none
