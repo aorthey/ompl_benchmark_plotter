@@ -149,8 +149,16 @@ def init_planner_colors(data):
   planner_data = data["planners"]
   planners = list(planner_data.keys())
   planners.sort()
+
   for planner in planners:
     color = get_diverse_color(planner)
+    print(planner,":",color)
+
+  if data["info"]["planner_colors"]:
+    planner_colors = data["info"]["planner_colors"]
+    for pcolor in planner_colors:
+      global_color_map[pcolor] = rgba_to_hex(planner_colors[pcolor])
+      print(pcolor,":",global_color_map[pcolor])
 
 def plot_success(ax, data):
 
@@ -307,6 +315,10 @@ def plot_graph_from_databases(database_filepaths, config):
       data["info"]["remove_ylabel"] = True
     else:
       data["info"]["remove_ylabel"] = False
+    if config['planner_colors']:
+      data["info"]['planner_colors'] = config['planner_colors']
+    else:
+      data["info"]['planner_colors'] = {}
 
     experiment_names = []
     experiment_times = []

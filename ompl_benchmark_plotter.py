@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import os
+import re
 from src.database_to_graph import *
 
 ############################################################
@@ -29,18 +30,37 @@ def run_benchmark_plotter(input_arguments):
   graph_group.add_argument('--ignore-non-optimal-planner', action='store_const', const=True, help='Do not plot non-optimal planner.')
   graph_group.add_argument('--ignore-planner', action='store', type=str, nargs='+', help='Exclude planners from graph (accepts multiple planner names)')
   graph_group.add_argument('--legend-separate-file', action='store_const', const=True, help='Print legend as separate file.')
-  graph_group.add_argument('--legend-below-figure', action='store_const',
-      const=True, help='Print legend below graph.')
-  graph_group.add_argument('--legend-none', action='store_const',
-      const=True, help='Do not print legend.')
-  graph_group.add_argument('--remove-ylabel', action='store_const',
-      const=True, help='Do not print label on y-axis.')
+  graph_group.add_argument('--legend-below-figure', action='store_const', const=True, help='Print legend below graph.')
+  graph_group.add_argument('--legend-none', action='store_const', const=True, help='Do not print legend.')
+  graph_group.add_argument('--remove-ylabel', action='store_const', const=True, help='Do not print label on y-axis.')
   graph_group.add_argument('--title-name', action='store', type=str, help='Set title name.')
   graph_group.add_argument('--no-title', action='store_const', const=True, help='Do not set a title for this graph')
+  graph_group.add_argument('--planner-color', type=str, action='append', help='Specify custom colors for planners as PlannerName=(R,G,B,A), e.g., --planner-color Planner1=(0.7,0.1,0.7,1.0)')
 
   args = parser.parse_args(input_arguments)
   if args.quiet:
     args.verbose = 0
+
+  ############################################################
+  ## Parse custom planner colors
+  ############################################################
+  planner_colors = {}
+  if args.planner_color:
+    for color_spec in args.planner_color:
+      match = re.match(r'(\w+)=\((\d*\.?\d+),(\d*\.?\d+),(\d*\.?\d+),(\d*\.?\d+)\)', color_spec)
+      if match:
+        planner_name = match.group(1)
+        rgba = tuple(float(match.group(i)) for i in range(2, 6))
+        if all(0 <= v <= 1 for v in rgba):
+          planner_colors[planner_name] = rgba
+        else:
+          if args.verbose > 0:
+            print(f"Error: RGBA values for {planner_name} must be between 0 and 1.")
+          return 1
+      else:
+        if args.verbose > 0:
+          print(f"Error: Invalid color format for {color_spec}. Expected PlannerName=(R,G,B,A).")
+        return 1
 
   ############################################################
   ## Sanity checks
@@ -64,9 +84,11 @@ def run_benchmark_plotter(input_arguments):
     print("Create optimality graphs for {} files.".format(len(args.database_files)))
 
   plot_config = make_config(args)
+  plot_config["planner_colors"] = planner_colors
   plot_graph_from_databases(args.database_files, plot_config)
 
   return 0
 
 if __name__ == '__main__':
+  import sys
   sys.exit(run_benchmark_plotter(sys.argv[1:]))

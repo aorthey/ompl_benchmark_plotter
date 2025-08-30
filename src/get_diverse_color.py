@@ -31,3 +31,7 @@ def get_diverse_color(planner_name):
     hex_color = next(color_cycler)
     global_color_map[planner_name] = hex_color
     return hex_color
+
+def rgba_to_hex(rgba):
+    r, g, b, _ = [int(x * 255) for x in rgba]
+    return f"#{r:02x}{g:02x}{b:02x}"
