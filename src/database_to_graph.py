@@ -146,6 +146,8 @@ def get_errors(point):
     return time_errors, cost_errors
 
 def init_planner_colors(data):
+  global global_color_map
+
   planner_data = data["planners"]
   planners = list(planner_data.keys())
   planners.sort()
@@ -157,8 +159,10 @@ def init_planner_colors(data):
   if data["info"]["planner_colors"]:
     planner_colors = data["info"]["planner_colors"]
     for pcolor in planner_colors:
-      global_color_map[pcolor] = rgba_to_hex(planner_colors[pcolor])
-      print(pcolor,":",global_color_map[pcolor])
+      name = pcolor[0]
+      color_array = pcolor[1]
+      global_color_map[name] = rgba_to_hex(color_array)
+      print(pcolor,":",color_array)
 
 def plot_success(ax, data):
 
