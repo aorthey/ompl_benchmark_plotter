@@ -1,3 +1,5 @@
+
+
 # ompl_benchmark_plotter
 
 This is an easy-to-use script to quickly generate cost-success graphs (as pdf) from benchmark database file(s) generated in the [Open Motion Planning Library (OMPL)](https://github.com/ompl/ompl).
@@ -49,6 +51,8 @@ NOTE: default values can be found in ```config/default.json```
   Fontsize of tick labels.
 * **--ignore-non-optimal-planner**
   Do not plot non-optimal planner.
+* **--ignore-planner** _PLANNER_NAME(S)_
+  Exclude specified planner(s) from the graph.
 * **--title-name** _TITLE-NAME_ 
   Set title name
 * **--no-title**
