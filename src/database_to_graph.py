@@ -219,7 +219,9 @@ def plot_optimization(ax, data, config):
         planner_q95 = planner_data[planner]["quantile95"]
 
         start = get_start_index(planner_median, times, max_cost)
-        ax.plot(times[start:], planner_median[start:], color=color, linewidth=data["info"]["linewidth"], label=get_label(planner))
+        ax.plot(times[start:], planner_median[start:], color=color,
+                linestyle=get_line_style(data, planner),
+                linewidth=data["info"]["linewidth"], label=get_label(planner))
         ax.fill_between(times[start:], planner_q5[start:], planner_q95[start:], color=color, alpha=data["info"]["alpha_percentile"])
       else:
         planner_point = planner_data[planner]["point"]

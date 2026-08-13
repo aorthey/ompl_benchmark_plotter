@@ -26,6 +26,8 @@
         "linewidth": "3",
         "legend_linewidth": "5",
         "markerstyle": "x",
+        "remove_ylabel": false,
+        "planner_colors": {},
         "experiment": "chain"
     },
     "planners": {
